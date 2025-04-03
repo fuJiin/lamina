@@ -13,10 +13,10 @@ pub enum Token {
     #[token("#f")]
     False,
 
-    #[regex("[0-9]+|[0-9]+\\.[0-9]+")]
+    #[regex("[0-9]+|[0-9]+\\.[0-9]+", |lex| lex.slice().to_string())]
     Number(String),
 
-    #[regex("[a-zA-Z+\\-*/<>=!?_][a-zA-Z0-9+\\-*/<>=!?_]*")]
+    #[regex("[a-zA-Z+\\-*/<>=!?_][a-zA-Z0-9+\\-*/<>=!?_]*", |lex| lex.slice().to_string())]
     Symbol(String),
 
     #[regex("#\\\\space")]

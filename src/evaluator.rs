@@ -1,4 +1,3 @@
-
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -28,7 +27,7 @@ fn eval_with_env(expr: Value, env: Rc<RefCell<Environment>>) -> Result<Value, La
 fn eval_pair(pair: Rc<(Value, Value)>, env: Rc<RefCell<Environment>>) -> Result<Value, LaminaError> {
     let first = &pair.0;
     let rest = &pair.1;
-    
+
     match first {
         Value::Symbol(s) => match s.as_str() {
             "quote" => Ok(rest.clone()),
@@ -44,23 +43,23 @@ fn eval_pair(pair: Rc<(Value, Value)>, env: Rc<RefCell<Environment>>) -> Result<
 
 fn setup_initial_env() -> HashMap<String, Value> {
     let mut env = HashMap::new();
-    
+
     // Basic arithmetic
     env.insert("+".to_string(), make_binary_op(|a, b| a + b));
     env.insert("-".to_string(), make_binary_op(|a, b| a - b));
     env.insert("*".to_string(), make_binary_op(|a, b| a * b));
     env.insert("/".to_string(), make_binary_op(|a, b| a / b));
-    
+
     // Comparisons
     env.insert("=".to_string(), make_comparison_op(|a, b| a == b));
     env.insert("<".to_string(), make_comparison_op(|a, b| a < b));
     env.insert(">".to_string(), make_comparison_op(|a, b| a > b));
-    
+
     // List operations
     env.insert("car".to_string(), make_procedure(car));
     env.insert("cdr".to_string(), make_procedure(cdr));
     env.insert("cons".to_string(), make_procedure(cons));
-    
+
     env
 }
 
@@ -95,13 +94,8 @@ where F: Fn(i64, i64) -> bool + 'static {
 }
 
 fn make_procedure<F>(f: F) -> Value 
-where F: Fn(Value) -> Result<Value, String> + 'static {
-    Value::Procedure(Rc::new(move |args: Vec<Value>| {
-        if args.len() != 1 {
-            return Err("Procedure requires exactly 1 argument".into());
-        }
-        f(args[0].clone())
-    }))
+where F: Fn(Vec<Value>) -> Result<Value, String> + 'static {
+    Value::Procedure(Rc::new(f))
 }
 
 fn car(v: Value) -> Result<Value, String> {
@@ -147,7 +141,7 @@ fn eval_lambda(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, Lami
                     parent: Some(env.clone()),
                     bindings: HashMap::new(),
                 }));
-                
+
                 // Bind parameters
                 let mut param_list = params.clone();
                 let mut arg_idx = 0;
@@ -158,7 +152,7 @@ fn eval_lambda(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, Lami
                     param_list = pair.1;
                     arg_idx += 1;
                 }
-                
+
                 // Evaluate body
                 match eval_with_env(body.clone(), new_env) {
                     Ok(result) => Ok(result),
@@ -240,7 +234,7 @@ fn eval_procedure(pair: (Value, Value), env: Rc<RefCell<Environment>>) -> Result
         args.push(eval_with_env(p.0, env.clone())?);
         rest = p.1;
     }
-    
+
     match proc {
         Value::Procedure(f) => f(args).map_err(|e| LaminaError::RuntimeError(e)),
         _ => Err(LaminaError::RuntimeError("Not a procedure".into())),
