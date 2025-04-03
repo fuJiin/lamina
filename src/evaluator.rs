@@ -188,9 +188,9 @@ fn eval_if(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, LaminaEr
 
 fn eval_define(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, LaminaError> {
     if let Value::Pair(pair) = args {
-        if let Value::Symbol(name) = pair.0 {
-            let value = eval_with_env(pair.1, env.clone())?;
-            env.borrow_mut().bindings.insert(name, value);
+        if let Value::Symbol(name) = &pair.0 {
+            let value = eval_with_env(pair.1.clone(), env.clone())?;
+            env.borrow_mut().bindings.insert(name.clone(), value);
             Ok(Value::Nil)
         } else {
             Err(LaminaError::RuntimeError("First argument to define must be a symbol".into()))
@@ -202,14 +202,14 @@ fn eval_define(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, Lami
 
 fn eval_set(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, LaminaError> {
     if let Value::Pair(pair) = args {
-        if let Value::Symbol(name) = pair.0 {
-            let value = eval_with_env(pair.1, env.clone())?;
+        if let Value::Symbol(name) = &pair.0 {
+            let value = eval_with_env(pair.1.clone(), env.clone())?;
             let mut current = env;
             loop {
                 let env_ref = current.borrow();
                 if env_ref.bindings.contains_key(&name) {
                     drop(env_ref);
-                    current.borrow_mut().bindings.insert(name, value);
+                    current.borrow_mut().bindings.insert(name.clone(), value.clone());
                     return Ok(Value::Nil);
                 }
                 if let Some(parent) = &env_ref.parent {
