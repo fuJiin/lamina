@@ -33,7 +33,7 @@ fn execute(source: &str) -> Result<Value, Box<dyn std::error::Error>> {
 }
 
 fn repl() -> Result<(), Box<dyn std::error::Error>> {
-    let mut rl = Editor::<()>::new()?;
+    let mut rl = Editor::<(), rustyline::DefaultHelper>::new()?;
     println!("Lamina R7RS-small (Press Ctrl+C to exit)");
     
     loop {

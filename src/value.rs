@@ -5,8 +5,8 @@ use std::fmt;
 
 #[derive(Clone)]
 pub struct Environment {
-    parent: Option<Rc<RefCell<Environment>>>,
-    bindings: std::collections::HashMap<String, Value>,
+    pub parent: Option<Rc<RefCell<Environment>>>,
+    pub bindings: std::collections::HashMap<String, Value>,
 }
 
 #[derive(Clone)]
