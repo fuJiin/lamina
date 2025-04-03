@@ -1,6 +1,4 @@
 use logos::Logos;
-use crate::error::LaminaError;
-
 #[derive(Logos, Debug, Clone)]
 pub enum Token {
     #[token("(")]
@@ -37,7 +35,6 @@ pub enum Token {
     #[token("'")]
     Quote,
     
-    #[error]
     #[regex(r"[ \t\n\f]+", logos::skip)]
     #[regex(r";[^\n]*\n", logos::skip)]
     Error,

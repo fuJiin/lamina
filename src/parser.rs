@@ -87,7 +87,7 @@ impl Parser {
             }
             Some(Token::Character(c)) => {
                 self.advance();
-                Ok(Value::Character(*c))
+                Ok(Value::Character(c))
             }
             None => Err(LaminaError::ParserError("Unexpected end of input".into())),
             _ => Err(LaminaError::ParserError("Unexpected token".into())),

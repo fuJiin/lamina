@@ -25,17 +25,20 @@ fn eval_with_env(expr: Value, env: Rc<RefCell<Environment>>) -> Result<Value, La
     }
 }
 
-fn eval_pair(pair: (Value, Value), env: Rc<RefCell<Environment>>) -> Result<Value, LaminaError> {
-    match pair.0 {
+fn eval_pair(pair: Rc<(Value, Value)>, env: Rc<RefCell<Environment>>) -> Result<Value, LaminaError> {
+    let first = &pair.0;
+    let rest = &pair.1;
+    
+    match first {
         Value::Symbol(s) => match s.as_str() {
-            "quote" => Ok(car(pair.1)?),
-            "lambda" => eval_lambda(pair.1, env),
-            "if" => eval_if(pair.1, env),
-            "define" => eval_define(pair.1, env),
-            "set!" => eval_set(pair.1, env),
-            _ => eval_procedure(pair, env),
+            "quote" => Ok(rest.clone()),
+            "lambda" => eval_lambda(rest.clone(), env),
+            "if" => eval_if(rest.clone(), env),
+            "define" => eval_define(rest.clone(), env),
+            "set!" => eval_set(rest.clone(), env),
+            _ => eval_procedure(pair.clone(), env),
         },
-        _ => eval_procedure(pair, env),
+        _ => eval_procedure(pair.clone(), env),
     }
 }
 
