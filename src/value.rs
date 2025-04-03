@@ -4,7 +4,6 @@ use std::cell::RefCell;
 use std::fmt;
 
 #[derive(Clone)]
-#[derive(Clone)]
 pub struct Environment {
     pub parent: Option<Rc<RefCell<Environment>>>,
     pub bindings: std::collections::HashMap<String, Value>,
@@ -16,6 +15,16 @@ impl Environment {
             parent: None,
             bindings: std::collections::HashMap::new(),
         }
+    }
+
+    pub fn get(&self, key: &str) -> Option<Value> {
+        self.bindings.get(key).cloned().or_else(|| {
+            self.parent.as_ref().and_then(|p| p.borrow().get(key))
+        })
+    }
+    
+    pub fn set(&mut self, key: String, value: Value) {
+        self.bindings.insert(key, value);
     }
 }
 

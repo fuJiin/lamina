@@ -115,12 +115,11 @@ fn cdr(v: Value) -> Result<Value, String> {
     }
 }
 
-fn cons(arg: Value) -> Result<Value, String> {
-    if let Value::Pair(p) = arg {
-        Ok(Value::Pair(Rc::new((p.0.clone(), p.1.clone()))))
-    } else {
-        Err("cons: expected pair".into())
+fn cons(args: Vec<Value>) -> Result<Value, String> {
+    if args.len() != 2 {
+        return Err("cons: expected 2 arguments".into());
     }
+    Ok(Value::Pair(Rc::new((args[0].clone(), args[1].clone()))))
 }
 
 fn lookup_symbol(name: &str, env: Rc<RefCell<Environment>>) -> Result<Value, LaminaError> {
