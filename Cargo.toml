@@ -1,9 +1,10 @@
+
 [package]
-name = "my-project"
+name = "lamina"
 version = "0.1.0"
-authors = ["runner"]
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+logos = "0.13"     # For lexing
+thiserror = "1.0"  # For error handling
+rustyline = "12.0" # For REPL interface
