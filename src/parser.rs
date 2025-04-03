@@ -48,7 +48,8 @@ impl Parser {
     }
 
     fn parse_expr(&mut self) -> Result<Value, LaminaError> {
-        match self.peek() {
+        let token = self.peek().cloned();
+        match token {
             Some(Token::LParen) => self.parse_list(),
             Some(Token::Quote) => {
                 self.advance();

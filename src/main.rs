@@ -1,4 +1,3 @@
-
 mod lexer;
 mod parser;
 mod evaluator;
@@ -11,7 +10,7 @@ use value::Value;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
-    
+
     if args.len() > 1 {
         let filename = &args[1];
         if !filename.ends_with(".lmn") {
@@ -33,9 +32,9 @@ fn execute(source: &str) -> Result<Value, Box<dyn std::error::Error>> {
 }
 
 fn repl() -> Result<(), Box<dyn std::error::Error>> {
-    let mut rl = Editor::<(), rustyline::DefaultHelper>::new()?;
+    let mut rl = Editor::<(), rustyline::history::DefaultHistory>::new()?;
     println!("Lamina R7RS-small (Press Ctrl+C to exit)");
-    
+
     loop {
         match rl.readline("λ> ") {
             Ok(line) => {

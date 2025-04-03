@@ -17,7 +17,7 @@ pub fn eval(expr: Value) -> Result<Value, Box<dyn std::error::Error>> {
 fn eval_with_env(expr: Value, env: Rc<RefCell<Environment>>) -> Result<Value, LaminaError> {
     match expr {
         Value::Symbol(s) => lookup_symbol(&s, env),
-        Value::Pair(pair) => eval_pair(*pair, env),
+        Value::Pair(pair) => eval_pair(pair.clone(), env),
         Value::Number(_) | Value::Boolean(_) | Value::String(_) | Value::Character(_) | 
         Value::Vector(_) | Value::Procedure(_) => Ok(expr),
         Value::Nil => Ok(Value::Nil),
@@ -115,11 +115,12 @@ fn cdr(v: Value) -> Result<Value, String> {
     }
 }
 
-fn cons(args: Vec<Value>) -> Result<Value, String> {
-    if args.len() != 2 {
-        return Err("cons: expected 2 arguments".into());
+fn cons(arg: Value) -> Result<Value, String> {
+    if let Value::Pair(p) = arg {
+        Ok(Value::Pair(Rc::new((p.0.clone(), p.1.clone()))))
+    } else {
+        Err("cons: expected pair".into())
     }
-    Ok(Value::Pair(Rc::new((args[0].clone(), args[1].clone()))))
 }
 
 fn lookup_symbol(name: &str, env: Rc<RefCell<Environment>>) -> Result<Value, LaminaError> {

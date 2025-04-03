@@ -4,9 +4,19 @@ use std::cell::RefCell;
 use std::fmt;
 
 #[derive(Clone)]
+#[derive(Clone)]
 pub struct Environment {
     pub parent: Option<Rc<RefCell<Environment>>>,
     pub bindings: std::collections::HashMap<String, Value>,
+}
+
+impl Environment {
+    pub fn new() -> Self {
+        Environment {
+            parent: None,
+            bindings: std::collections::HashMap::new(),
+        }
+    }
 }
 
 #[derive(Clone)]
