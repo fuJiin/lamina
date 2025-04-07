@@ -75,7 +75,7 @@ fn test_rust_module() {
 fn test_embedding_api() {
     // Create a Lamina interpreter with standard environment
     let interpreter = embed::init();
-    
+
     // Define a simple addition function for testing
     interpreter.register_function("+", |args| {
         let mut sum = 0.0;

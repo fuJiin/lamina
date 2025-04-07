@@ -49,6 +49,8 @@ pub fn eval_with_env(expr: Value, env: Rc<RefCell<Environment>>) -> Result<Value
                     "guard" => special_forms::eval_guard(args, env),
                     "define-record-type" => special_forms::eval_define_record_type(args, env),
                     "begin" => eval_begin(args, env),
+                    "quote" => special_forms::eval_quote(args, env),
+                    "define-library" => libraries::eval_define_library(args, env),
                     _ => {
                         // It's a function call
                         // Evaluate the operator

@@ -129,6 +129,33 @@ impl NumberKind {
             NumberKind::Rational(n, d) => *n as f64 / *d as f64,
         }
     }
+
+    pub fn to_u8(&self) -> Result<u8, String> {
+        match self {
+            NumberKind::Integer(i) => {
+                if *i >= 0 && *i <= 255 {
+                    Ok(*i as u8)
+                } else {
+                    Err(format!("Integer value {} out of range for u8", i))
+                }
+            }
+            NumberKind::Real(r) => {
+                if r.is_finite() && (0.0..=255.0).contains(r) {
+                    Ok(*r as u8)
+                } else {
+                    Err(format!("Real value {} out of range for u8", r))
+                }
+            }
+            NumberKind::Rational(n, d) => {
+                let value = *n as f64 / *d as f64;
+                if value.is_finite() && (0.0..=255.0).contains(&value) {
+                    Ok(value as u8)
+                } else {
+                    Err(format!("Rational value {}/{} out of range for u8", n, d))
+                }
+            }
+        }
+    }
 }
 
 // Implement From trait for Value
@@ -257,10 +284,16 @@ impl PartialEq for Value {
             (Value::Environment(a), Value::Environment(b)) => Rc::ptr_eq(a, b),
             (Value::RecordType(a), Value::RecordType(b)) => Rc::ptr_eq(a, b),
             (Value::Record(a), Value::Record(b)) => Rc::ptr_eq(a, b),
-            (Value::Bytevector(a), Value::Bytevector(b)) => Rc::ptr_eq(a, b),
-            (Value::Library(a), Value::Library(b)) => Rc::ptr_eq(a, b),
-            // Different variants are never equal
+            // Other combinations are not equal
             _ => false,
         }
+    }
+}
+
+// Helper methods for Value
+impl Value {
+    // Create a new Pair (cons cell)
+    pub fn cons(car: Value, cdr: Value) -> Self {
+        Value::Pair(Rc::new((car, cdr)))
     }
 }

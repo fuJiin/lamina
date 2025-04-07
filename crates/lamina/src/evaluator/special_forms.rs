@@ -54,6 +54,13 @@ pub fn register_special_forms(env: Rc<RefCell<Environment>>) {
     env.borrow_mut()
         .bindings
         .insert("begin".to_string(), Value::Symbol("begin".to_string()));
+    env.borrow_mut()
+        .bindings
+        .insert("quote".to_string(), Value::Symbol("quote".to_string()));
+    env.borrow_mut().bindings.insert(
+        "define-library".to_string(),
+        Value::Symbol("define-library".to_string()),
+    );
 }
 
 // Lambda special form
@@ -916,5 +923,15 @@ pub fn eval_define_record_type(args: Value, env: Rc<RefCell<Environment>>) -> Re
         }
     } else {
         Err(Error::Runtime("Malformed record type definition".into()))
+    }
+}
+
+// Add quote special form evaluation
+pub fn eval_quote(args: Value, _env: Rc<RefCell<Environment>>) -> Result<Value, Error> {
+    if let Value::Pair(pair) = args {
+        // Return the first argument without evaluating it
+        Ok(pair.0.clone())
+    } else {
+        Err(Error::Runtime("Malformed quote expression".into()))
     }
 }
