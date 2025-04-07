@@ -47,6 +47,7 @@ pub fn setup_initial_env() -> Rc<RefCell<Environment>> {
 }
 
 // Register basic procedures (+ - * / etc.)
+#[allow(dead_code)]
 pub fn register_procedures(env: Rc<RefCell<Environment>>) {
     // Define standard arithmetic operators
     env.borrow_mut().bindings.insert(
@@ -243,6 +244,7 @@ pub fn register_procedures(env: Rc<RefCell<Environment>>) {
 }
 
 // Create a child environment by extending the parent with new bindings
+#[allow(dead_code)]
 pub fn extend_environment(
     parent: Rc<RefCell<Environment>>,
     names: Vec<String>,
@@ -293,6 +295,7 @@ pub fn lookup_variable(name: &str, env: Rc<RefCell<Environment>>) -> Result<Valu
 }
 
 // Set a variable's value in the environment chain
+#[allow(dead_code)]
 pub fn set_variable(name: &str, value: Value, env: Rc<RefCell<Environment>>) -> Result<(), Error> {
     let mut current_env = env;
 
@@ -326,6 +329,7 @@ pub fn set_variable(name: &str, value: Value, env: Rc<RefCell<Environment>>) -> 
 }
 
 // Define a new variable in the current environment
+#[allow(dead_code)]
 pub fn define_variable(name: &str, value: Value, env: &mut Environment) {
     env.bindings.insert(name.to_string(), value);
 }

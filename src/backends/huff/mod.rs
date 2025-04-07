@@ -33,6 +33,6 @@ pub fn compile(expr: &Value, contract_name: &str) -> Result<String, Error> {
 /// Success or error
 pub fn compile_to_file(expr: &Value, contract_name: &str, output_path: &str) -> Result<(), Error> {
     let huff_code = compile(expr, contract_name)?;
-    std::fs::write(output_path, huff_code).map_err(|e| Error::IOError(e.to_string()))?;
+    std::fs::write(output_path, huff_code).map_err(|e| Error::IO(e.to_string()))?;
     Ok(())
 }

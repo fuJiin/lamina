@@ -11,11 +11,13 @@ thread_local! {
 }
 
 // Function to get a library by name
+#[allow(dead_code)]
 pub fn get_library(name: &[String]) -> Option<Rc<RefCell<Library>>> {
     LIBRARIES.with(|libraries| libraries.borrow().get(&name.to_vec()).cloned())
 }
 
 // Function to register a library
+#[allow(dead_code)]
 pub fn register_library(library: Rc<RefCell<Library>>) {
     let name = library.borrow().name.clone();
     LIBRARIES.with(|libraries| {

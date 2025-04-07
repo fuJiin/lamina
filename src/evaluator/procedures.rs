@@ -4,6 +4,7 @@ use std::rc::Rc;
 use crate::value::{NumberKind, Value};
 
 // Set up all the standard Scheme procedures
+#[allow(dead_code)]
 pub fn setup_initial_procedures(env: &mut HashMap<String, Value>) {
     // Arithmetic operations
     env.insert(

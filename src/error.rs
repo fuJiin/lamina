@@ -13,9 +13,11 @@ pub enum Error {
     #[allow(dead_code)]
     Evaluation(String),
     #[error("Compilation error: {0}")]
-    CompilationError(String),
+    #[allow(dead_code)]
+    Compilation(String),
     #[error("IO error: {0}")]
-    IOError(String),
+    #[allow(dead_code)]
+    IO(String),
 }
 
 impl From<String> for Error {

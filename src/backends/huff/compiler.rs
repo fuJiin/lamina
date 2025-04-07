@@ -7,6 +7,7 @@ use super::bytecode::{HuffContract, HuffMacro, Instruction};
 use super::opcodes::Opcode;
 
 /// Compiler context to track state during compilation
+#[allow(dead_code)]
 struct CompilerContext {
     /// Track macros being defined
     macros: Vec<HuffMacro>,
@@ -25,6 +26,7 @@ struct CompilerContext {
 }
 
 /// Information about a function
+#[allow(dead_code)]
 struct FunctionInfo {
     name: String,
     params: Vec<String>,
@@ -32,6 +34,7 @@ struct FunctionInfo {
 }
 
 impl CompilerContext {
+    #[allow(dead_code)]
     fn new(contract_name: &str) -> Self {
         CompilerContext {
             macros: Vec::new(),
@@ -43,6 +46,7 @@ impl CompilerContext {
     }
 
     /// Generate a new unique label
+    #[allow(dead_code)]
     fn new_label(&mut self, prefix: &str) -> String {
         let label = format!("{}_{}", prefix, self.label_counter);
         self.label_counter += 1;
@@ -50,6 +54,7 @@ impl CompilerContext {
     }
 
     /// Add a macro to the context
+    #[allow(dead_code)]
     fn add_macro(&mut self, macro_def: HuffMacro) {
         self.macros.push(macro_def);
     }

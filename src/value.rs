@@ -54,10 +54,12 @@ pub struct Record {
 // Define a library structure
 #[derive(Clone)]
 pub struct Library {
-    pub name: Vec<String>,    // Library name (e.g., (scheme base))
+    pub name: Vec<String>, // Library name (e.g., (scheme base))
+    #[allow(dead_code)]
     pub exports: Vec<String>, // List of exported symbols
     #[allow(dead_code)]
     pub imports: Vec<Vec<String>>, // List of imported libraries
+    #[allow(dead_code)]
     pub environment: Rc<RefCell<Environment>>, // Library's environment
 }
 
@@ -79,6 +81,7 @@ pub enum Value {
     RecordType(Rc<RecordType>),
     Record(Rc<Record>),
     // Add Bytevector
+    #[allow(dead_code)]
     Bytevector(Rc<RefCell<Vec<u8>>>),
     // Add Library
     Library(Rc<RefCell<Library>>),
@@ -118,6 +121,7 @@ pub enum NumberKind {
 }
 
 impl NumberKind {
+    #[allow(dead_code)]
     pub fn as_f64(&self) -> f64 {
         match self {
             NumberKind::Integer(i) => *i as f64,
