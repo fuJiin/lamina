@@ -1,0 +1,33 @@
+[package]
+name = "lamina"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+description.workspace = true
+
+[dependencies]
+logos.workspace = true
+thiserror.workspace = true
+rustyline.workspace = true
+tiny-keccak.workspace = true
+
+[[example]]
+name = "rust_to_lamina"
+path = "examples/rust_to_lamina.rs"
+
+[[example]]
+name = "lamina_to_rust"
+path = "examples/lamina_to_rust.rs"
+
+[[example]]
+name = "rust_module"
+path = "examples/rust_module.rs"
+
+[lib]
+name = "lamina"
+path = "src/lib.rs"
+
+[[bin]]
+name = "lamina"
+path = "src/main.rs" 

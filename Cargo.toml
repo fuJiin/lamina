@@ -1,26 +1,22 @@
-[package]
-name = "lamina"
+[workspace]
+members = [
+    "crates/lamina",
+    "crates/lamina-huff",
+    "crates/lx",
+]
+resolver = "2"
+
+[workspace.package]
 version = "0.1.0"
 edition = "2021"
+authors = ["Lamina Team"]
+repository = "https://github.com/yourusername/lamina"
+description = "A Scheme-inspired language for smart contracts"
 
-[dependencies]
-logos = "0.13"     # For lexing
-thiserror = "1.0"  # For error handling
-rustyline = "12.0" # For REPL interface
-tiny-keccak = { version = "2.0", features = ["keccak"] } # For hashing function selectors
-
-[[example]]
-name = "rust_to_lamina"
-path = "examples/rust_to_lamina.rs"
-
-[[example]]
-name = "lamina_to_rust"
-path = "examples/lamina_to_rust.rs"
-
-[[example]]
-name = "rust_module"
-path = "examples/rust_module.rs"
-
-[[example]]
-name = "compile_to_huff"
-path = "examples/compile_to_huff.rs"
+[workspace.dependencies]
+logos = "0.13"
+thiserror = "1.0"
+rustyline = "12.0"
+tiny-keccak = { version = "2.0", features = ["keccak"] }
+clap = { version = "4.4", features = ["derive"] }
+lamina = { path = "crates/lamina" }

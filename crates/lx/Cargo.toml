@@ -1,0 +1,16 @@
+[package]
+name = "lx"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Build tool for Lamina projects"
+
+[dependencies]
+lamina.workspace = true
+clap.workspace = true
+thiserror.workspace = true
+
+[[bin]]
+name = "lx"
+path = "src/main.rs" 

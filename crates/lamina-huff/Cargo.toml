@@ -1,0 +1,20 @@
+[package]
+name = "lamina-huff"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Huff backend for the Lamina language"
+
+[dependencies]
+lamina.workspace = true
+thiserror.workspace = true
+tiny-keccak.workspace = true
+
+[[example]]
+name = "compile_to_huff"
+path = "examples/compile_to_huff.rs"
+
+[lib]
+name = "lamina_huff"
+path = "src/lib.rs" 
