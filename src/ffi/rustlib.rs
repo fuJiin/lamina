@@ -34,7 +34,7 @@ impl RustModule {
             
             env.borrow_mut().bindings.insert(
                 qualified_name,
-                Value::RustFn(func.clone(), format!("{}.{}", self.name, name)),
+                super::create_rust_fn_from_rc(&format!("{}.{}", self.name, name), func.clone()),
             );
         }
     }

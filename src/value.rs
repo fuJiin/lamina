@@ -83,6 +83,7 @@ pub enum Value {
     // Add Library
     Library(Rc<RefCell<Library>>),
     // Add RustFn to represent foreign Rust functions
+    #[allow(dead_code)]
     RustFn(Rc<dyn Fn(Vec<Value>) -> Result<Value, String>>, String),
 }
 

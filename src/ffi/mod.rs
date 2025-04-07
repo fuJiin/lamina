@@ -43,7 +43,7 @@ impl FFIRegistry {
         for (name, func) in &self.functions {
             env.borrow_mut().bindings.insert(
                 name.clone(),
-                Value::RustFn(func.clone(), name.clone()),
+                create_rust_fn_from_rc(name, func.clone()),
             );
         }
         Ok(())
@@ -132,4 +132,20 @@ pub fn value_to_string(value: &Value) -> Result<String, String> {
         Value::Symbol(s) => Ok(s.clone()),
         _ => Err(format!("Cannot convert {:?} to string", value)),
     }
+}
+
+/// Convenience function to create a RustFn value directly from a function
+/// This helps prevent "dead code" warnings since we're explicitly constructing RustFn variants
+#[allow(dead_code)]
+pub fn create_rust_fn<F>(name: &str, func: F) -> Value 
+where
+    F: Fn(Vec<Value>) -> Result<Value, String> + 'static,
+{
+    Value::RustFn(Rc::new(func), name.to_string())
+}
+
+/// Convenience function to create a RustFn value from an already Rc-wrapped function
+#[allow(dead_code)]
+pub fn create_rust_fn_from_rc(name: &str, func: Rc<dyn Fn(Vec<Value>) -> Result<Value, String>>) -> Value {
+    Value::RustFn(func, name.to_string())
 } 

@@ -22,6 +22,12 @@ impl Interpreter {
     /// Create a new Lamina interpreter with a fresh environment
     pub fn new() -> Self {
         let env = evaluator::setup_initial_env();
+        
+        // Load any registered FFI functions
+        if let Err(e) = crate::ffi::load_ffi_functions(&env) {
+            eprintln!("Warning: Failed to load FFI functions: {}", e);
+        }
+        
         Interpreter { env }
     }
 
@@ -54,13 +60,15 @@ impl Interpreter {
             LaminaError::Runtime(format!("Procedure not found: {}", proc_name))
         })?;
 
+        println!("Debug - Calling procedure '{}' of type: {:?}", proc_name, proc);
+
         // Call the procedure
         match proc {
             Value::Procedure(p) => p(args).map_err(|e| LaminaError::Runtime(e)),
             Value::RustFn(f, _) => f(args).map_err(|e| LaminaError::Runtime(e)),
             _ => Err(LaminaError::Runtime(format!(
-                "{} is not a procedure",
-                proc_name
+                "{} is not a procedure: {:?}",
+                proc_name, proc
             ))),
         }
     }
@@ -72,7 +80,7 @@ impl Interpreter {
     {
         self.env.borrow_mut().bindings.insert(
             name.to_string(),
-            Value::RustFn(Rc::new(func), name.to_string()),
+            crate::ffi::create_rust_fn(name, func),
         );
     }
 

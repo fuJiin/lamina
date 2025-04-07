@@ -145,7 +145,7 @@ fn eval_procedure_call(expr: Value, env: Rc<RefCell<Environment>>) -> Result<Val
                 Ok(result) => Ok(result),
                 Err(e) => Err(LaminaError::Runtime(format!("Error in Rust function {}: {}", name, e))),
             },
-            _ => Err(LaminaError::Runtime("Not a procedure".into())),
+            _ => Err(LaminaError::Runtime(format!("Not a procedure: {:?}", proc))),
         }
     } else {
         Err(LaminaError::Runtime("Expected pair".into()))

@@ -27,12 +27,9 @@ pub fn setup_initial_env() -> Rc<RefCell<Environment>> {
     env.borrow_mut()
         .bindings
         .insert("else".to_string(), Value::Boolean(true));
-
-    // Load any registered FFI functions
-    if let Err(e) = crate::ffi::load_ffi_functions(&env) {
-        eprintln!("Warning: Failed to load FFI functions: {}", e);
-    }
-
+    
+    // Note: FFI functions are loaded separately to avoid circular dependencies
+    
     // Define standard arithmetic operators
     env.borrow_mut().bindings.insert(
         "+".to_string(),
