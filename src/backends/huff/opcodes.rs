@@ -1,5 +1,5 @@
 /// EVM Opcodes used in Huff
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Opcode {
     // Stack operations
     PUSH0,
@@ -112,128 +112,143 @@ pub enum Opcode {
 
     // Keccak
     SHA3,
+
+    // Special variant for Huff constants
+    CONSTANT(String),
 }
 
 impl Opcode {
     /// Converts an opcode to its string representation in Huff
-    pub fn as_huff_str(&self) -> &'static str {
+    pub fn as_huff_str(&self) -> String {
         match self {
-            // Stack operations
-            Opcode::PUSH0 => "0x00 PUSH0",
-            Opcode::PUSH1 => "PUSH1",
-            Opcode::PUSH2 => "PUSH2",
-            Opcode::PUSH32 => "PUSH32",
-            Opcode::POP => "POP",
-            Opcode::DUP1 => "DUP1",
-            Opcode::DUP2 => "DUP2",
-            Opcode::DUP16 => "DUP16",
-            Opcode::SWAP1 => "SWAP1",
-            Opcode::SWAP2 => "SWAP2",
-            Opcode::SWAP16 => "SWAP16",
+            // Constants need to be referenced directly
+            Opcode::CONSTANT(name) => name.clone(),
 
-            // Arithmetic operations
-            Opcode::ADD => "ADD",
-            Opcode::SUB => "SUB",
-            Opcode::MUL => "MUL",
-            Opcode::DIV => "DIV",
-            Opcode::SDIV => "SDIV",
-            Opcode::MOD => "MOD",
-            Opcode::SMOD => "SMOD",
-            Opcode::ADDMOD => "ADDMOD",
-            Opcode::MULMOD => "MULMOD",
-            Opcode::EXP => "EXP",
+            // Default case for normal opcodes
+            _ => {
+                match self {
+                    // Stack operations
+                    Opcode::PUSH0 => "0x00",
+                    Opcode::PUSH1 => "0x01",
+                    Opcode::PUSH2 => "0x02",
+                    Opcode::PUSH32 => "0x32",
+                    Opcode::POP => "pop",
+                    Opcode::DUP1 => "dup1",
+                    Opcode::DUP2 => "dup2",
+                    Opcode::DUP16 => "dup16",
+                    Opcode::SWAP1 => "swap1",
+                    Opcode::SWAP2 => "swap2",
+                    Opcode::SWAP16 => "swap16",
 
-            // Comparison operations
-            Opcode::LT => "LT",
-            Opcode::GT => "GT",
-            Opcode::SLT => "SLT",
-            Opcode::SGT => "SGT",
-            Opcode::EQ => "EQ",
-            Opcode::ISZERO => "ISZERO",
+                    // Arithmetic operations
+                    Opcode::ADD => "add",
+                    Opcode::SUB => "sub",
+                    Opcode::MUL => "mul",
+                    Opcode::DIV => "div",
+                    Opcode::SDIV => "sdiv",
+                    Opcode::MOD => "mod",
+                    Opcode::SMOD => "smod",
+                    Opcode::ADDMOD => "addmod",
+                    Opcode::MULMOD => "mulmod",
+                    Opcode::EXP => "exp",
 
-            // Bitwise operations
-            Opcode::AND => "AND",
-            Opcode::OR => "OR",
-            Opcode::XOR => "XOR",
-            Opcode::NOT => "NOT",
-            Opcode::SHL => "SHL",
-            Opcode::SHR => "SHR",
-            Opcode::SAR => "SAR",
+                    // Comparison operations
+                    Opcode::LT => "lt",
+                    Opcode::GT => "gt",
+                    Opcode::SLT => "slt",
+                    Opcode::SGT => "sgt",
+                    Opcode::EQ => "eq",
+                    Opcode::ISZERO => "iszero",
 
-            // Memory operations
-            Opcode::MLOAD => "MLOAD",
-            Opcode::MSTORE => "MSTORE",
-            Opcode::MSTORE8 => "MSTORE8",
-            Opcode::MSIZE => "MSIZE",
+                    // Bitwise operations
+                    Opcode::AND => "and",
+                    Opcode::OR => "or",
+                    Opcode::XOR => "xor",
+                    Opcode::NOT => "not",
+                    Opcode::SHL => "shl",
+                    Opcode::SHR => "shr",
+                    Opcode::SAR => "sar",
 
-            // Storage operations
-            Opcode::SLOAD => "SLOAD",
-            Opcode::SSTORE => "SSTORE",
+                    // Memory operations
+                    Opcode::MLOAD => "mload",
+                    Opcode::MSTORE => "mstore",
+                    Opcode::MSTORE8 => "mstore8",
+                    Opcode::MSIZE => "msize",
 
-            // Program counter operations
-            Opcode::JUMP => "JUMP",
-            Opcode::JUMPI => "JUMPI",
-            Opcode::PC => "PC",
-            Opcode::JUMPDEST => "JUMPDEST",
+                    // Storage operations
+                    Opcode::SLOAD => "sload",
+                    Opcode::SSTORE => "sstore",
 
-            // Environment operations
-            Opcode::ADDRESS => "ADDRESS",
-            Opcode::BALANCE => "BALANCE",
-            Opcode::ORIGIN => "ORIGIN",
-            Opcode::CALLER => "CALLER",
-            Opcode::CALLVALUE => "CALLVALUE",
-            Opcode::CALLDATALOAD => "CALLDATALOAD",
-            Opcode::CALLDATASIZE => "CALLDATASIZE",
-            Opcode::CALLDATACOPY => "CALLDATACOPY",
-            Opcode::CODESIZE => "CODESIZE",
-            Opcode::CODECOPY => "CODECOPY",
-            Opcode::GASPRICE => "GASPRICE",
-            Opcode::EXTCODESIZE => "EXTCODESIZE",
-            Opcode::EXTCODECOPY => "EXTCODECOPY",
-            Opcode::RETURNDATASIZE => "RETURNDATASIZE",
-            Opcode::RETURNDATACOPY => "RETURNDATACOPY",
-            Opcode::EXTCODEHASH => "EXTCODEHASH",
+                    // Program counter operations
+                    Opcode::JUMP => "jump",
+                    Opcode::JUMPI => "jumpi",
+                    Opcode::PC => "pc",
+                    Opcode::JUMPDEST => "jumpdest",
 
-            // Block operations
-            Opcode::BLOCKHASH => "BLOCKHASH",
-            Opcode::COINBASE => "COINBASE",
-            Opcode::TIMESTAMP => "TIMESTAMP",
-            Opcode::NUMBER => "NUMBER",
-            Opcode::DIFFICULTY => "DIFFICULTY",
-            Opcode::GASLIMIT => "GASLIMIT",
-            Opcode::CHAINID => "CHAINID",
-            Opcode::SELFBALANCE => "SELFBALANCE",
-            Opcode::BASEFEE => "BASEFEE",
+                    // Environment operations
+                    Opcode::ADDRESS => "address",
+                    Opcode::BALANCE => "balance",
+                    Opcode::ORIGIN => "origin",
+                    Opcode::CALLER => "caller",
+                    Opcode::CALLVALUE => "callvalue",
+                    Opcode::CALLDATALOAD => "calldataload",
+                    Opcode::CALLDATASIZE => "calldatasize",
+                    Opcode::CALLDATACOPY => "calldatacopy",
+                    Opcode::CODESIZE => "codesize",
+                    Opcode::CODECOPY => "codecopy",
+                    Opcode::GASPRICE => "gasprice",
+                    Opcode::EXTCODESIZE => "extcodesize",
+                    Opcode::EXTCODECOPY => "extcodecopy",
+                    Opcode::RETURNDATASIZE => "returndatasize",
+                    Opcode::RETURNDATACOPY => "returndatacopy",
+                    Opcode::EXTCODEHASH => "extcodehash",
 
-            // Control flow operations
-            Opcode::STOP => "STOP",
-            Opcode::RETURN => "RETURN",
-            Opcode::REVERT => "REVERT",
-            Opcode::INVALID => "INVALID",
-            Opcode::SELFDESTRUCT => "SELFDESTRUCT",
+                    // Block operations
+                    Opcode::BLOCKHASH => "blockhash",
+                    Opcode::COINBASE => "coinbase",
+                    Opcode::TIMESTAMP => "timestamp",
+                    Opcode::NUMBER => "number",
+                    Opcode::DIFFICULTY => "difficulty",
+                    Opcode::GASLIMIT => "gaslimit",
+                    Opcode::CHAINID => "chainid",
+                    Opcode::SELFBALANCE => "selfbalance",
+                    Opcode::BASEFEE => "basefee",
 
-            // Call operations
-            Opcode::CALL => "CALL",
-            Opcode::CALLCODE => "CALLCODE",
-            Opcode::DELEGATECALL => "DELEGATECALL",
-            Opcode::STATICCALL => "STATICCALL",
-            Opcode::CREATE => "CREATE",
-            Opcode::CREATE2 => "CREATE2",
+                    // Control flow operations
+                    Opcode::STOP => "stop",
+                    Opcode::RETURN => "return",
+                    Opcode::REVERT => "revert",
+                    Opcode::INVALID => "invalid",
+                    Opcode::SELFDESTRUCT => "selfdestruct",
 
-            // Log operations
-            Opcode::LOG0 => "LOG0",
-            Opcode::LOG1 => "LOG1",
-            Opcode::LOG2 => "LOG2",
-            Opcode::LOG3 => "LOG3",
-            Opcode::LOG4 => "LOG4",
+                    // Call operations
+                    Opcode::CALL => "call",
+                    Opcode::CALLCODE => "callcode",
+                    Opcode::DELEGATECALL => "delegatecall",
+                    Opcode::STATICCALL => "staticcall",
+                    Opcode::CREATE => "create",
+                    Opcode::CREATE2 => "create2",
 
-            // Keccak
-            Opcode::SHA3 => "SHA3",
+                    // Log operations
+                    Opcode::LOG0 => "log0",
+                    Opcode::LOG1 => "log1",
+                    Opcode::LOG2 => "log2",
+                    Opcode::LOG3 => "log3",
+                    Opcode::LOG4 => "log4",
+
+                    // Keccak
+                    Opcode::SHA3 => "sha3",
+
+                    // This case should be unreachable as we've handled CONSTANT above
+                    Opcode::CONSTANT(_) => unreachable!(),
+                }
+                .to_string()
+            }
         }
     }
 }
 
 /// Helper function to convert Opcode to Huff representation
-pub fn to_huff(opcode: Opcode) -> &'static str {
+pub fn to_huff(opcode: Opcode) -> String {
     opcode.as_huff_str()
 }

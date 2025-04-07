@@ -22,4 +22,4 @@ mod backends {
     mod huff {
         mod compiler_test;
     }
-} 
+}

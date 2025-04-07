@@ -3,65 +3,85 @@
 // SPDX-License-Identifier: MIT
 // Compiler: Lamina-to-Huff
 
+/* Storage Slots */
+#define constant COUNTER_SLOT_SLOT = 0x0000000000000000000000000000000000000000000000000000000000000000
+
+/* Function Signatures */
+#define function getCounter() view returns (uint256)
+#define function increment() view returns (uint256)
+
+/* Function Implementations */
 #define macro GET_COUNTER_MACRO() = takes(0) returns(1) {
-    PUSH1 0x00
-    SLOAD
-    PUSH1 0x00
-    MSTORE
-    PUSH1 0x20
-    PUSH1 0x00
-    RETURN
+    // Load value from storage slot 0
+    // Using storage slot constant: COUNTER_SLOT_SLOT
+    COUNTER_SLOT_SLOT
+    sload
 }
 
 
 #define macro INCREMENT_MACRO() = takes(0) returns(1) {
-    PUSH1 0x00
-    SLOAD
-    PUSH1 0x01
-    ADD
-    DUP1
-    PUSH1 0x00
-    SSTORE
-    PUSH1 0x00
-    MSTORE
-    PUSH1 0x20
-    PUSH1 0x00
-    RETURN
+    // Increment value at storage slot 0
+    // Using storage slot constant: COUNTER_SLOT_SLOT
+    COUNTER_SLOT_SLOT
+    sload
+    0x01 
+    add
+    dup1
+    COUNTER_SLOT_SLOT
+    swap1
+    sstore
 }
 
 
-#define macro MAIN_MACRO() = takes(0) returns(0) {
-    PUSH1 0x00
-    CALLDATALOAD
-    PUSH1 0xe0
-    SHR
-    DUP1
-    PUSH4 0x8ada066e
-    EQ
-    PUSH1 0x00
-    // Jump to get_counter_branch if condition is met
-    __JUMPLABEL_get_counter_branch
-    JUMPI
-    DUP1
-    PUSH4 0xd09de08a
-    EQ
-    PUSH1 0x01
-    // Jump to increment_branch if condition is met
-    __JUMPLABEL_increment_branch
-    JUMPI
-    INVALID
-get_counter_branch:
-    // Call GET_COUNTER_MACRO
-increment_branch:
-    // Call INCREMENT_MACRO
+#define macro MAIN_MACRO() = takes(1) returns(0) {
+    // Function Dispatcher
+    // Compare function selector and route to appropriate function
+compare_selector_0:
+    0x8ada066e 
+    dup2
+    eq
+    [jump_to_get_counter]
+    // Jump to jump_to_get_counter if condition is met
+    [jump_to_get_counter] jumpi
+jump_to_get_counter:
+    pop
+    GET_COUNTER_MACRO()
+    // Store return value in memory
+    0x00 
+    mstore
+    // Return 32 bytes from memory
+    0x20 
+    0x00 
+    return
+compare_selector_1:
+    0xd09de08a 
+    dup2
+    eq
+    [jump_to_increment]
+    // Jump to jump_to_increment if condition is met
+    [jump_to_increment] jumpi
+jump_to_increment:
+    pop
+    INCREMENT_MACRO()
+    // Store return value in memory
+    0x00 
+    mstore
+    // Return 32 bytes from memory
+    0x20 
+    0x00 
+    return
+no_match:
+    // No matching function, revert
+    0x00 
+    0x00 
+    revert
 }
 
-
-#define function owner() view returns (address)
 
 #define macro MAIN() = takes(0) returns(0) {
-    // Get the function selector
-    0x00 calldataload 0xe0 shr
+    // Parse function selector from calldata
+    0x00 calldataload     // load the first 32 bytes of calldata
+    0xe0 shr              // shift right by 0xe0 (224) bits to get the selector
     MAIN_MACRO()
 }
 

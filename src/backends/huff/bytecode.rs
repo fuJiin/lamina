@@ -19,10 +19,10 @@ pub enum Instruction {
 
     /// Conditional jump to a label
     JumpToIf(String),
-    
+
     /// Jump label for jumpdest
     JumpLabel(String),
-    
+
     /// Call to another macro
     MacroCall(String),
 
@@ -44,7 +44,7 @@ impl fmt::Display for HuffMacro {
         writeln!(
             f,
             "#define macro {}_MACRO() = takes({}) returns({}) {{",
-            self.name.to_uppercase(),
+            self.name.to_uppercase().replace('-', "_"),
             self.takes,
             self.returns
         )?;
@@ -57,25 +57,35 @@ impl fmt::Display for HuffMacro {
                         .iter()
                         .map(|b| format!("{:02x}", b))
                         .collect::<String>();
-                    writeln!(f, "    PUSH{} 0x{}", size, hex_str)?
+                    // Huff uses lowercase for hex values and doesn't require PUSH prefix
+                    writeln!(f, "    0x{} ", hex_str)?
                 }
                 Instruction::Label(label) => writeln!(f, "{}:", label)?,
                 Instruction::JumpTo(label) => {
                     writeln!(f, "    // Jump to {}", label)?;
-                    writeln!(f, "    JUMP")?;
+                    writeln!(f, "    [{}] jump", label)?
                 }
                 Instruction::JumpToIf(label) => {
                     writeln!(f, "    // Jump to {} if condition is met", label)?;
-                    writeln!(f, "    JUMPI")?;
+                    writeln!(f, "    [{}] jumpi", label)?
                 }
                 Instruction::JumpLabel(label) => {
                     // For jump labels, we need to generate a proper label reference
-                    writeln!(f, "    PUSH1 [{}]", label)?;
-                },
+                    writeln!(f, "    [{}]", label)?;
+                }
                 Instruction::MacroCall(macro_name) => {
-                    // For macro calls, just reference the macro directly
-                    writeln!(f, "    {}", macro_name)?;
-                },
+                    // Check if this is a reference to a storage slot constant
+                    if macro_name.ends_with("_SLOT") {
+                        writeln!(f, "    {}", macro_name)?;
+                    } else {
+                        // For function macro calls, add _MACRO suffix and uppercase
+                        writeln!(
+                            f,
+                            "    {}_MACRO()",
+                            macro_name.to_uppercase().replace('-', "_")
+                        )?;
+                    }
+                }
                 Instruction::Comment(comment) => writeln!(f, "    // {}", comment)?,
             }
         }
@@ -91,6 +101,7 @@ pub struct HuffContract {
     pub constructor: Option<HuffMacro>,
     pub main: HuffMacro,
     pub macros: Vec<HuffMacro>,
+    pub storage_constants: String, // New field for storage constants
 }
 
 impl fmt::Display for HuffContract {
@@ -99,9 +110,42 @@ impl fmt::Display for HuffContract {
         writeln!(f, "\n// SPDX-License-Identifier: MIT")?;
         writeln!(f, "// Compiler: Lamina-to-Huff\n")?;
 
-        // Write all the macros
+        // First define the storage slots as constants
+        if !self.storage_constants.is_empty() {
+            writeln!(f, "/* Storage Slots */")?;
+            writeln!(f, "{}", self.storage_constants)?;
+        }
+
+        // Define the function interfaces with proper signatures
+        writeln!(f, "/* Function Signatures */")?;
+
+        // Use a HashSet to track function signatures we've already written
+        let mut seen_functions = std::collections::HashSet::new();
+
         for mac in &self.macros {
-            writeln!(f, "{}\n", mac)?;
+            // Convert macro names to function definitions
+            // Format: macro_name -> functionName
+            let func_name = macro_to_function_name(&mac.name);
+
+            // Skip duplicates and skip the main function
+            if seen_functions.contains(&func_name) || mac.name.to_lowercase() == "main" {
+                continue;
+            }
+            seen_functions.insert(func_name.clone());
+
+            // Simple return type detection - all functions return uint256 for now
+            // In a real implementation, this would be determined by analyzing the function
+            writeln!(f, "#define function {}() view returns (uint256)", func_name)?;
+        }
+
+        // Write all the macros with proper Huff syntax
+        writeln!(f, "\n/* Function Implementations */")?;
+
+        // Write user-defined functions first (excluding main)
+        for mac in &self.macros {
+            if mac.name.to_lowercase() != "main" {
+                writeln!(f, "{}\n", mac)?;
+            }
         }
 
         // Constructor if any
@@ -109,27 +153,34 @@ impl fmt::Display for HuffContract {
             writeln!(f, "{}\n", constructor)?;
         }
 
-        // Main macro is required
+        // Main macro is required - place at the end
         writeln!(f, "{}\n", self.main)?;
 
-        // Define the Huff contract functions based on the available macros
-        for mac in &self.macros {
-            // Convert macro names to function definitions
-            // Format: macro_name -> functionName
-            let func_name = macro_to_function_name(&mac.name);
-            
-            // Simple return type detection - all functions return uint256 for now
-            // In a real implementation, this would be determined by analyzing the function
-            writeln!(f, "#define function {}() view returns (uint256)", func_name)?;
-        }
-        
-        writeln!(f, "\n#define macro MAIN() = takes(0) returns(0) {{")?;
-        writeln!(f, "    {}_MACRO()", self.main.name.to_uppercase())?;
+        // Define the Huff entrypoint macros
+        writeln!(f, "#define macro MAIN() = takes(0) returns(0) {{")?;
+        writeln!(f, "    // Parse function selector from calldata")?;
+        writeln!(
+            f,
+            "    0x00 calldataload     // load the first 32 bytes of calldata"
+        )?;
+        writeln!(
+            f,
+            "    0xe0 shr              // shift right by 0xe0 (224) bits to get the selector"
+        )?;
+        writeln!(
+            f,
+            "    {}_MACRO()",
+            self.main.name.to_uppercase().replace('-', "_")
+        )?;
         writeln!(f, "}}")?;
 
         if let Some(constructor) = &self.constructor {
             writeln!(f, "\n#define macro CONSTRUCTOR() = takes(0) returns (0) {{")?;
-            writeln!(f, "    {}_MACRO()", constructor.name.to_uppercase())?;
+            writeln!(
+                f,
+                "    {}_MACRO()",
+                constructor.name.to_uppercase().replace('-', "_")
+            )?;
             writeln!(f, "}}")
         } else {
             writeln!(f, "\n#define macro CONSTRUCTOR() = takes(0) returns (0) {{")?;
@@ -146,7 +197,7 @@ fn macro_to_function_name(macro_name: &str) -> String {
     if parts.is_empty() {
         return String::new();
     }
-    
+
     let mut result = parts[0].to_string();
     for part in parts.iter().skip(1) {
         if !part.is_empty() {
@@ -154,6 +205,6 @@ fn macro_to_function_name(macro_name: &str) -> String {
             result.push_str(&part[1..]);
         }
     }
-    
+
     result
 }

@@ -33,10 +33,10 @@ fn test_compile_counter_contract() {
     // Parse and evaluate the code
     let tokens = lexer::lex(lamina_code).unwrap();
     let expr = parser::parse(&tokens).unwrap();
-    
+
     // Compile to Huff
     let huff_code = huff::compile(&expr, "Counter").unwrap();
-    
+
     // Basic verification
     assert!(huff_code.contains("Counter"));
     assert!(huff_code.contains("get_counter"));
@@ -75,10 +75,10 @@ fn test_compile_simple_storage() {
     // Parse and evaluate the code
     let tokens = lexer::lex(lamina_code).unwrap();
     let expr = parser::parse(&tokens).unwrap();
-    
+
     // Compile to Huff
     let huff_code = huff::compile(&expr, "SimpleStorage").unwrap();
-    
+
     // Basic verification
     assert!(huff_code.contains("SimpleStorage"));
     assert!(huff_code.contains("get_value"));
@@ -86,4 +86,4 @@ fn test_compile_simple_storage() {
     assert!(huff_code.contains("CALLDATALOAD"));
     assert!(huff_code.contains("SLOAD"));
     assert!(huff_code.contains("SSTORE"));
-} 
+}
