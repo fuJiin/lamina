@@ -6,6 +6,7 @@ pub mod ffi;
 pub mod lexer;
 pub mod parser;
 pub mod value;
+pub mod backends;
 
 use std::cell::RefCell;
 use std::rc::Rc;

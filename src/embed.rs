@@ -1,8 +1,9 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::error::LaminaError;
+use crate::error::Error;
 use crate::evaluator;
+use crate::evaluator::environment::setup_initial_env;
 use crate::lexer;
 use crate::parser;
 use crate::value::{Environment, Value};
@@ -21,7 +22,7 @@ impl Default for Interpreter {
 impl Interpreter {
     /// Create a new Lamina interpreter with a fresh environment
     pub fn new() -> Self {
-        let env = evaluator::setup_initial_env();
+        let env = setup_initial_env();
 
         // Load any registered FFI functions
         if let Err(e) = crate::ffi::load_ffi_functions(&env) {
@@ -32,7 +33,7 @@ impl Interpreter {
     }
 
     /// Evaluate a string of Lamina code and return the result
-    pub fn eval(&self, code: &str) -> Result<Value, LaminaError> {
+    pub fn eval(&self, code: &str) -> Result<Value, Error> {
         let tokens = lexer::lex(code)?;
         let expr = parser::parse(&tokens)?;
         evaluator::eval_with_env(expr, self.env.clone())
@@ -40,25 +41,28 @@ impl Interpreter {
 
     /// Define a variable in the interpreter's environment
     pub fn define(&self, name: &str, value: Value) {
-        evaluator::environment::define_variable(name, value, self.env.clone());
+        self.env.borrow_mut().bindings.insert(name.to_string(), value);
     }
 
     /// Set an existing variable in the interpreter's environment
-    pub fn set(&self, name: &str, value: Value) -> Result<(), LaminaError> {
+    pub fn set(&self, name: &str, value: Value) -> Result<(), Error> {
         evaluator::environment::set_variable(name, value, self.env.clone())
     }
 
     /// Get a variable from the interpreter's environment
     pub fn get(&self, name: &str) -> Option<Value> {
-        evaluator::environment::lookup_variable(name, self.env.clone())
+        match evaluator::environment::lookup_variable(name, self.env.clone()) {
+            Ok(value) => Some(value),
+            Err(_) => None,
+        }
     }
 
     /// Call a Lamina procedure with the given arguments
-    pub fn call(&self, proc_name: &str, args: Vec<Value>) -> Result<Value, LaminaError> {
+    pub fn call(&self, proc_name: &str, args: Vec<Value>) -> Result<Value, Error> {
         // Look up the procedure
         let proc = self
             .get(proc_name)
-            .ok_or_else(|| LaminaError::Runtime(format!("Procedure not found: {}", proc_name)))?;
+            .ok_or_else(|| Error::Runtime(format!("Procedure not found: {}", proc_name)))?;
 
         println!(
             "Debug - Calling procedure '{}' of type: {:?}",
@@ -67,9 +71,9 @@ impl Interpreter {
 
         // Call the procedure
         match proc {
-            Value::Procedure(p) => p(args).map_err(LaminaError::Runtime),
-            Value::RustFn(f, _) => f(args).map_err(LaminaError::Runtime),
-            _ => Err(LaminaError::Runtime(format!(
+            Value::Procedure(p) => p(args).map_err(Error::Runtime),
+            Value::RustFn(f, _) => f(args).map_err(Error::Runtime),
+            _ => Err(Error::Runtime(format!(
                 "{} is not a procedure: {:?}",
                 proc_name, proc
             ))),
@@ -99,7 +103,7 @@ pub fn init() -> Interpreter {
 }
 
 /// Convenience function to evaluate a string of Lamina code
-pub fn eval(code: &str) -> Result<Value, LaminaError> {
+pub fn eval(code: &str) -> Result<Value, Error> {
     let interpreter = Interpreter::new();
     interpreter.eval(code)
 }

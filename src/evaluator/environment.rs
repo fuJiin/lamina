@@ -2,21 +2,33 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use crate::error::LaminaError;
+use crate::error::Error;
 use crate::value::{Environment, NumberKind, Value};
 
 use super::procedures::setup_initial_procedures;
+use super::libraries;
+use super::special_forms::register_special_forms;
 
-// Set up the initial global environment with basic procedures and special forms
+// Function to create a new environment with optional parent
+pub fn create_environment(parent: Option<Rc<RefCell<Environment>>>) -> Rc<RefCell<Environment>> {
+    let mut env = Environment::new();
+    env.parent = parent;
+    Rc::new(RefCell::new(env))
+}
+
+/// Setup the initial environment with standard procedures and special forms
 pub fn setup_initial_env() -> Rc<RefCell<Environment>> {
-    let env = Rc::new(RefCell::new(Environment {
-        parent: None,
-        bindings: HashMap::new(),
-    }));
-
-    // Add basic procedures
-    setup_initial_procedures(&mut env.borrow_mut().bindings);
-
+    let env = create_environment(None);
+    
+    // Register special forms
+    register_special_forms(env.clone());
+    
+    // Add a marker for environment type
+    env.borrow_mut().bindings.insert(
+        "environment-type".to_string(),
+        Value::Symbol("standard".to_string()),
+    );
+    
     // Add boolean constants
     env.borrow_mut()
         .bindings
@@ -27,9 +39,17 @@ pub fn setup_initial_env() -> Rc<RefCell<Environment>> {
     env.borrow_mut()
         .bindings
         .insert("else".to_string(), Value::Boolean(true));
+    
+    // Register libraries (EVM, etc.)
+    if let Err(e) = libraries::setup_libraries(env.clone()) {
+        eprintln!("Warning: Failed to setup libraries: {}", e);
+    }
+    
+    env
+}
 
-    // Note: FFI functions are loaded separately to avoid circular dependencies
-
+// Register basic procedures (+ - * / etc.)
+pub fn register_procedures(env: Rc<RefCell<Environment>>) {
     // Define standard arithmetic operators
     env.borrow_mut().bindings.insert(
         "+".to_string(),
@@ -42,6 +62,133 @@ pub fn setup_initial_env() -> Rc<RefCell<Environment>> {
                 }
             }
             Ok(Value::from(sum))
+        })),
+    );
+
+    // Define subtraction
+    env.borrow_mut().bindings.insert(
+        "-".to_string(),
+        Value::Procedure(Rc::new(|args: Vec<Value>| {
+            if args.is_empty() {
+                return Err("- requires at least one argument".into());
+            }
+            
+            if args.len() == 1 {
+                // Negation
+                match &args[0] {
+                    Value::Number(n) => {
+                        match n {
+                            NumberKind::Integer(i) => Ok(Value::Number(NumberKind::Integer(-i))),
+                            NumberKind::Real(r) => Ok(Value::Number(NumberKind::Real(-r))),
+                            NumberKind::Rational(num, den) => Ok(Value::Number(NumberKind::Rational(-num, *den))),
+                        }
+                    },
+                    _ => Err("- requires numeric arguments".into()),
+                }
+            } else {
+                // Subtraction
+                let mut result = match &args[0] {
+                    Value::Number(n) => n.as_f64(),
+                    _ => return Err("- requires numeric arguments".into()),
+                };
+                
+                for arg in args.iter().skip(1) {
+                    match arg {
+                        Value::Number(n) => result -= n.as_f64(),
+                        _ => return Err("- requires numeric arguments".into()),
+                    }
+                }
+                
+                Ok(Value::from(result))
+            }
+        })),
+    );
+
+    // Define multiplication
+    env.borrow_mut().bindings.insert(
+        "*".to_string(),
+        Value::Procedure(Rc::new(|args: Vec<Value>| {
+            let mut product = 1.0;
+            for arg in args {
+                match arg {
+                    Value::Number(n) => product *= n.as_f64(),
+                    _ => return Err("* requires numeric arguments".into()),
+                }
+            }
+            Ok(Value::from(product))
+        })),
+    );
+
+    // Define division
+    env.borrow_mut().bindings.insert(
+        "/".to_string(),
+        Value::Procedure(Rc::new(|args: Vec<Value>| {
+            if args.is_empty() {
+                return Err("/ requires at least one argument".into());
+            }
+            
+            if args.len() == 1 {
+                // Reciprocal
+                match &args[0] {
+                    Value::Number(n) => {
+                        let value = n.as_f64();
+                        if value == 0.0 {
+                            return Err("Division by zero".into());
+                        }
+                        Ok(Value::from(1.0 / value))
+                    },
+                    _ => Err("/ requires numeric arguments".into()),
+                }
+            } else {
+                // Division
+                let mut result = match &args[0] {
+                    Value::Number(n) => n.as_f64(),
+                    _ => return Err("/ requires numeric arguments".into()),
+                };
+                
+                for arg in args.iter().skip(1) {
+                    match arg {
+                        Value::Number(n) => {
+                            let value = n.as_f64();
+                            if value == 0.0 {
+                                return Err("Division by zero".into());
+                            }
+                            result /= value;
+                        },
+                        _ => return Err("/ requires numeric arguments".into()),
+                    }
+                }
+                
+                Ok(Value::from(result))
+            }
+        })),
+    );
+
+    // Define equal for numbers
+    env.borrow_mut().bindings.insert(
+        "=".to_string(),
+        Value::Procedure(Rc::new(|args: Vec<Value>| {
+            if args.len() < 2 {
+                return Err("= requires at least two arguments".into());
+            }
+            
+            let first = match &args[0] {
+                Value::Number(n) => n.as_f64(),
+                _ => return Err("= requires numeric arguments".into()),
+            };
+            
+            for arg in args.iter().skip(1) {
+                match arg {
+                    Value::Number(n) => {
+                        if (n.as_f64() - first).abs() > f64::EPSILON {
+                            return Ok(Value::Boolean(false));
+                        }
+                    },
+                    _ => return Err("= requires numeric arguments".into()),
+                }
+            }
+            
+            Ok(Value::Boolean(true))
         })),
     );
 
@@ -95,397 +242,96 @@ pub fn setup_initial_env() -> Rc<RefCell<Environment>> {
             Ok(Value::Boolean(false)) // No truthy values found
         })),
     );
-
-    // Add bytevector operations
-    env.borrow_mut().bindings.insert(
-        "bytevector".to_string(),
-        Value::Procedure(Rc::new(|args: Vec<Value>| {
-            let bytes: Result<Vec<u8>, String> = args
-                .iter()
-                .map(|arg| {
-                    if let Value::Number(n) = arg {
-                        let value = n.as_f64() as u8;
-                        Ok(value)
-                    } else {
-                        Err("bytevector arguments must be numbers".into())
-                    }
-                })
-                .collect();
-
-            match bytes {
-                Ok(bytes) => Ok(Value::Bytevector(Rc::new(RefCell::new(bytes)))),
-                Err(e) => Err(e),
-            }
-        })),
-    );
-
-    env.borrow_mut().bindings.insert(
-        "bytevector-length".to_string(),
-        Value::Procedure(Rc::new(|args: Vec<Value>| {
-            if args.len() != 1 {
-                return Err("bytevector-length requires exactly one argument".into());
-            }
-
-            match &args[0] {
-                Value::Bytevector(bv) => {
-                    let length = bv.borrow().len();
-                    Ok(Value::Number(NumberKind::Integer(length as i64)))
-                }
-                _ => Err("bytevector-length requires a bytevector".into()),
-            }
-        })),
-    );
-
-    env.borrow_mut().bindings.insert(
-        "bytevector-u8-ref".to_string(),
-        Value::Procedure(Rc::new(|args: Vec<Value>| {
-            if args.len() != 2 {
-                return Err("bytevector-u8-ref requires exactly two arguments".into());
-            }
-
-            match (&args[0], &args[1]) {
-                (Value::Bytevector(bv), Value::Number(n)) => {
-                    let index = n.as_f64() as usize;
-                    let borrow = bv.borrow();
-
-                    if index >= borrow.len() {
-                        return Err(format!(
-                            "Index {} out of bounds for bytevector of length {}",
-                            index,
-                            borrow.len()
-                        ));
-                    }
-
-                    Ok(Value::Number(NumberKind::Integer(borrow[index] as i64)))
-                }
-                _ => Err("bytevector-u8-ref requires a bytevector and an index".into()),
-            }
-        })),
-    );
-
-    env.borrow_mut().bindings.insert(
-        "bytevector-u8-set!".to_string(),
-        Value::Procedure(Rc::new(|args: Vec<Value>| {
-            if args.len() != 3 {
-                return Err("bytevector-u8-set! requires exactly three arguments".into());
-            }
-
-            match (&args[0], &args[1], &args[2]) {
-                (Value::Bytevector(bv), Value::Number(n1), Value::Number(n2)) => {
-                    let index = n1.as_f64() as usize;
-                    let value = n2.as_f64() as u8;
-                    let mut borrow = bv.borrow_mut();
-
-                    if index >= borrow.len() {
-                        return Err(format!(
-                            "Index {} out of bounds for bytevector of length {}",
-                            index,
-                            borrow.len()
-                        ));
-                    }
-
-                    borrow[index] = value;
-                    Ok(Value::Nil)
-                }
-                _ => Err("bytevector-u8-set! requires a bytevector, an index, and a value".into()),
-            }
-        })),
-    );
-
-    env.borrow_mut().bindings.insert(
-        "string->utf8".to_string(),
-        Value::Procedure(Rc::new(|args: Vec<Value>| {
-            if args.len() != 1 {
-                return Err("string->utf8 requires exactly one argument".into());
-            }
-
-            match &args[0] {
-                Value::String(s) => {
-                    let bytes = s.as_bytes().to_vec();
-                    Ok(Value::Bytevector(Rc::new(RefCell::new(bytes))))
-                }
-                _ => Err("string->utf8 requires a string".into()),
-            }
-        })),
-    );
-
-    env.borrow_mut().bindings.insert(
-        "utf8->string".to_string(),
-        Value::Procedure(Rc::new(|args: Vec<Value>| {
-            if args.len() != 1 {
-                return Err("utf8->string requires exactly one argument".into());
-            }
-
-            match &args[0] {
-                Value::Bytevector(bv) => {
-                    let bytes = bv.borrow();
-                    match String::from_utf8(bytes.clone()) {
-                        Ok(s) => Ok(Value::String(s)),
-                        Err(_) => Err("Invalid UTF-8 sequence in bytevector".into()),
-                    }
-                }
-                _ => Err("utf8->string requires a bytevector".into()),
-            }
-        })),
-    );
-
-    // Add string operations
-    env.borrow_mut().bindings.insert(
-        "string-map".to_string(),
-        Value::Procedure(Rc::new(|args: Vec<Value>| {
-            if args.len() != 2 {
-                return Err("string-map requires exactly two arguments".into());
-            }
-
-            match (&args[0], &args[1]) {
-                (Value::Procedure(proc), Value::String(s)) => {
-                    let mut result = String::new();
-
-                    for c in s.chars() {
-                        let char_value = Value::Character(c);
-                        let mapped = proc(vec![char_value.clone()])?;
-
-                        match mapped {
-                            Value::Character(mapped_char) => {
-                                result.push(mapped_char);
-                            }
-                            _ => return Err("string-map procedure must return a character".into()),
-                        }
-                    }
-
-                    Ok(Value::String(result))
-                }
-                _ => Err("string-map requires a procedure and a string".into()),
-            }
-        })),
-    );
-
-    env.borrow_mut().bindings.insert(
-        "string-for-each".to_string(),
-        Value::Procedure(Rc::new(|args: Vec<Value>| {
-            if args.len() != 2 {
-                return Err("string-for-each requires exactly two arguments".into());
-            }
-
-            match (&args[0], &args[1]) {
-                (Value::Procedure(proc), Value::String(s)) => {
-                    for c in s.chars() {
-                        let char_value = Value::Character(c);
-                        proc(vec![char_value.clone()])?;
-                    }
-
-                    Ok(Value::Nil)
-                }
-                _ => Err("string-for-each requires a procedure and a string".into()),
-            }
-        })),
-    );
-
-    // Add vector operations
-    env.borrow_mut().bindings.insert(
-        "vector".to_string(),
-        Value::Procedure(Rc::new(|args: Vec<Value>| Ok(Value::Vector(Rc::new(args))))),
-    );
-
-    env.borrow_mut().bindings.insert(
-        "vector-map".to_string(),
-        Value::Procedure(Rc::new(|args: Vec<Value>| {
-            if args.len() != 2 {
-                return Err("vector-map requires exactly two arguments".into());
-            }
-
-            match (&args[0], &args[1]) {
-                (Value::Procedure(proc), Value::Vector(v)) => {
-                    let mut result = Vec::new();
-
-                    for element in v.iter() {
-                        let mapped = proc(vec![element.clone()])?;
-                        result.push(mapped);
-                    }
-
-                    Ok(Value::Vector(Rc::new(result)))
-                }
-                _ => Err("vector-map requires a procedure and a vector".into()),
-            }
-        })),
-    );
-
-    env.borrow_mut().bindings.insert(
-        "vector-for-each".to_string(),
-        Value::Procedure(Rc::new(|args: Vec<Value>| {
-            if args.len() != 2 {
-                return Err("vector-for-each requires exactly two arguments".into());
-            }
-
-            match (&args[0], &args[1]) {
-                (Value::Procedure(proc), Value::Vector(v)) => {
-                    for element in v.iter() {
-                        proc(vec![element.clone()])?;
-                    }
-
-                    Ok(Value::Nil)
-                }
-                _ => Err("vector-for-each requires a procedure and a vector".into()),
-            }
-        })),
-    );
-
-    // Add numeric predicates
-    env.borrow_mut().bindings.insert(
-        "exact-integer?".to_string(),
-        Value::Procedure(Rc::new(|args: Vec<Value>| {
-            if args.len() != 1 {
-                return Err("exact-integer? requires exactly one argument".into());
-            }
-
-            match &args[0] {
-                Value::Number(NumberKind::Integer(_)) => Ok(Value::Boolean(true)),
-                _ => Ok(Value::Boolean(false)),
-            }
-        })),
-    );
-
-    env.borrow_mut().bindings.insert(
-        "exact?".to_string(),
-        Value::Procedure(Rc::new(|args: Vec<Value>| {
-            if args.len() != 1 {
-                return Err("exact? requires exactly one argument".into());
-            }
-
-            match &args[0] {
-                Value::Number(NumberKind::Integer(_)) => Ok(Value::Boolean(true)),
-                _ => Ok(Value::Boolean(false)),
-            }
-        })),
-    );
-
-    env.borrow_mut().bindings.insert(
-        "inexact?".to_string(),
-        Value::Procedure(Rc::new(|args: Vec<Value>| {
-            if args.len() != 1 {
-                return Err("inexact? requires exactly one argument".into());
-            }
-
-            match &args[0] {
-                Value::Number(NumberKind::Real(_)) => Ok(Value::Boolean(true)),
-                _ => Ok(Value::Boolean(false)),
-            }
-        })),
-    );
-
-    // Add char-upcase
-    env.borrow_mut().bindings.insert(
-        "char-upcase".to_string(),
-        Value::Procedure(Rc::new(|args: Vec<Value>| {
-            if args.len() != 1 {
-                return Err("char-upcase requires exactly one argument".into());
-            }
-
-            match &args[0] {
-                Value::Character(c) => {
-                    let uppercase = c.to_uppercase().next().unwrap_or(*c);
-                    Ok(Value::Character(uppercase))
-                }
-                _ => Err("char-upcase requires a character".into()),
-            }
-        })),
-    );
-
-    env
 }
 
-// Helper function to create an extended environment with new bindings
-#[allow(dead_code)]
+// Create a child environment by extending the parent with new bindings
 pub fn extend_environment(
     parent: Rc<RefCell<Environment>>,
     names: Vec<String>,
     values: Vec<Value>,
-) -> Result<Rc<RefCell<Environment>>, LaminaError> {
+) -> Result<Rc<RefCell<Environment>>, Error> {
     if names.len() != values.len() {
-        return Err(LaminaError::Runtime(format!(
+        return Err(Error::Runtime(format!(
             "Expected {} arguments, got {}",
             names.len(),
             values.len()
         )));
     }
 
-    let new_env = Rc::new(RefCell::new(Environment {
-        parent: Some(parent),
-        bindings: HashMap::new(),
-    }));
+    let mut env = Environment::new();
+    env.parent = Some(parent);
 
-    // Add the bindings
     for (name, value) in names.into_iter().zip(values.into_iter()) {
-        new_env.borrow_mut().bindings.insert(name, value);
+        env.bindings.insert(name, value);
     }
 
-    Ok(new_env)
+    Ok(Rc::new(RefCell::new(env)))
 }
 
-// Function to look up a variable in an environment chain
-pub fn lookup_variable(name: &str, env: Rc<RefCell<Environment>>) -> Option<Value> {
-    let mut current = env;
+// Look up a variable in the environment chain
+pub fn lookup_variable(name: &str, env: Rc<RefCell<Environment>>) -> Result<Value, String> {
+    let mut current_env = env;
 
     loop {
-        // Check if the variable exists in the current environment
-        let env_ref = current.borrow();
+        // Check the current environment
+        let env_ref = current_env.borrow();
         if let Some(value) = env_ref.bindings.get(name) {
-            return Some(value.clone());
+            return Ok(value.clone());
         }
 
-        // If not found, check parent environment
-        if let Some(parent) = &env_ref.parent {
-            // Move up to parent, dropping the current borrow
-            let next = parent.clone();
-            drop(env_ref); // Explicitly drop the borrow before reassigning
-            current = next;
-        } else {
-            // No more parents, variable not found
-            return None;
+        // Move to parent environment if there is one
+        match &env_ref.parent {
+            Some(parent) => {
+                let parent_clone = parent.clone();
+                drop(env_ref); // Drop the borrow before reassigning
+                current_env = parent_clone;
+            }
+            None => {
+                drop(env_ref); // Drop the borrow
+                return Err(format!("Undefined variable: {}", name));
+            }
         }
     }
 }
 
-// Define a variable in the current environment
-#[allow(dead_code)]
-pub fn define_variable(name: &str, value: Value, env: Rc<RefCell<Environment>>) {
-    env.borrow_mut().bindings.insert(name.to_string(), value);
-}
-
-// Set the value of an existing variable in the environment chain
-#[allow(dead_code)]
+// Set a variable's value in the environment chain
 pub fn set_variable(
     name: &str,
     value: Value,
     env: Rc<RefCell<Environment>>,
-) -> Result<(), LaminaError> {
-    let mut current = env;
+) -> Result<(), Error> {
+    let mut current_env = env;
 
     loop {
-        // Check if the variable exists in the current environment
-        let env_ref = current.borrow();
-        if env_ref.bindings.contains_key(name) {
-            // Variable found, update it
-            drop(env_ref); // Explicitly drop the borrow before mutating
-            current
-                .borrow_mut()
-                .bindings
-                .insert(name.to_string(), value);
+        // Check the current environment
+        let env_ref = current_env.borrow();
+        let found = env_ref.bindings.contains_key(name);
+
+        if found {
+            drop(env_ref); // Drop the borrow before mutating
+            current_env.borrow_mut().bindings.insert(name.to_string(), value);
             return Ok(());
         }
 
-        // If not found, check parent environment
-        if let Some(parent) = &env_ref.parent {
-            // Move up to parent, dropping the current borrow
-            let next = parent.clone();
-            drop(env_ref); // Explicitly drop the borrow before reassigning
-            current = next;
-        } else {
-            // No more parents, variable not found
-            return Err(LaminaError::Runtime(format!(
-                "Undefined variable: {}",
-                name
-            )));
+        // Move to parent environment if there is one
+        match &env_ref.parent {
+            Some(parent) => {
+                let parent_clone = parent.clone();
+                drop(env_ref); // Drop the borrow before reassigning
+                current_env = parent_clone;
+            }
+            None => {
+                drop(env_ref); // Drop the borrow
+                return Err(Error::Runtime(format!(
+                    "Undefined variable: {}",
+                    name
+                )));
+            }
         }
     }
+}
+
+// Define a new variable in the current environment
+pub fn define_variable(name: &str, value: Value, env: &mut Environment) {
+    env.bindings.insert(name.to_string(), value);
 }

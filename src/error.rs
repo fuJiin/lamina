@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum LaminaError {
+pub enum Error {
     #[error("Runtime error: {0}")]
     Runtime(String),
     #[error("Parser error: {0}")]
@@ -12,10 +12,14 @@ pub enum LaminaError {
     #[error("Evaluation error: {0}")]
     #[allow(dead_code)]
     Evaluation(String),
+    #[error("Compilation error: {0}")]
+    CompilationError(String),
+    #[error("IO error: {0}")]
+    IOError(String),
 }
 
-impl From<String> for LaminaError {
+impl From<String> for Error {
     fn from(s: String) -> Self {
-        LaminaError::Runtime(s)
+        Error::Runtime(s)
     }
 }

@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use crate::error::LaminaError;
+use crate::error::Error;
 use crate::value::{Environment, Value};
 
 /// Type alias for Rust functions callable from Lamina
@@ -42,7 +42,7 @@ impl FFIRegistry {
     }
 
     /// Load all registered functions into a Lamina environment
-    pub fn load_into_env(&self, env: &Rc<RefCell<Environment>>) -> Result<(), LaminaError> {
+    pub fn load_into_env(&self, env: &Rc<RefCell<Environment>>) -> Result<(), Error> {
         for (name, func) in &self.functions {
             env.borrow_mut()
                 .bindings
@@ -68,7 +68,7 @@ where
 }
 
 /// Load all registered functions into the given environment
-pub fn load_ffi_functions(env: &Rc<RefCell<Environment>>) -> Result<(), LaminaError> {
+pub fn load_ffi_functions(env: &Rc<RefCell<Environment>>) -> Result<(), Error> {
     FFI_REGISTRY.with(|registry| registry.borrow().load_into_env(env))
 }
 

@@ -2,13 +2,74 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use crate::error::LaminaError;
+use crate::error::Error;
 use crate::value::{Environment, Record, RecordType, Value};
 
 use super::eval_with_env;
 
+// Add this function that wasn't in our snapshot
+pub fn register_special_forms(env: Rc<RefCell<Environment>>) {
+    // Register all the special forms
+    env.borrow_mut().bindings.insert(
+        "lambda".to_string(),
+        Value::Symbol("lambda".to_string())
+    );
+    env.borrow_mut().bindings.insert(
+        "if".to_string(), 
+        Value::Symbol("if".to_string())
+    );
+    env.borrow_mut().bindings.insert(
+        "define".to_string(),
+        Value::Symbol("define".to_string())
+    );
+    env.borrow_mut().bindings.insert(
+        "set!".to_string(), 
+        Value::Symbol("set!".to_string())
+    );
+    env.borrow_mut().bindings.insert(
+        "cond".to_string(),
+        Value::Symbol("cond".to_string())
+    );
+    env.borrow_mut().bindings.insert(
+        "let".to_string(),
+        Value::Symbol("let".to_string())
+    );
+    env.borrow_mut().bindings.insert(
+        "let*".to_string(),
+        Value::Symbol("let*".to_string())
+    );
+    env.borrow_mut().bindings.insert(
+        "letrec".to_string(),
+        Value::Symbol("letrec".to_string())
+    );
+    env.borrow_mut().bindings.insert(
+        "with-exception-handler".to_string(),
+        Value::Symbol("with-exception-handler".to_string())
+    );
+    env.borrow_mut().bindings.insert(
+        "raise".to_string(),
+        Value::Symbol("raise".to_string())
+    );
+    env.borrow_mut().bindings.insert(
+        "error".to_string(),
+        Value::Symbol("error".to_string())
+    );
+    env.borrow_mut().bindings.insert(
+        "guard".to_string(),
+        Value::Symbol("guard".to_string())
+    );
+    env.borrow_mut().bindings.insert(
+        "define-record-type".to_string(),
+        Value::Symbol("define-record-type".to_string())
+    );
+    env.borrow_mut().bindings.insert(
+        "begin".to_string(),
+        Value::Symbol("begin".to_string())
+    );
+}
+
 // Lambda special form
-pub fn eval_lambda(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, LaminaError> {
+pub fn eval_lambda(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, Error> {
     if let Value::Pair(pair) = args {
         let params = pair.0.clone();
 
@@ -17,7 +78,7 @@ pub fn eval_lambda(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, 
             body_pair.0.clone()
         } else {
             // This should not happen with well-formed expressions
-            return Err(LaminaError::Runtime("Malformed lambda".into()));
+            return Err(Error::Runtime("Malformed lambda".into()));
         };
 
         let env_clone = env.clone();
@@ -63,12 +124,12 @@ pub fn eval_lambda(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, 
             }
         })))
     } else {
-        Err(LaminaError::Runtime("Invalid lambda form".into()))
+        Err(Error::Runtime("Invalid lambda form".into()))
     }
 }
 
 // If special form
-pub fn eval_if(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, LaminaError> {
+pub fn eval_if(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, Error> {
     if let Value::Pair(test_pair) = args {
         let test = eval_with_env(test_pair.0.clone(), env.clone())?;
         if let Value::Pair(conseq_pair) = &test_pair.1 {
@@ -83,15 +144,15 @@ pub fn eval_if(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, Lami
                 _ => eval_with_env(conseq_pair.0.clone(), env),
             }
         } else {
-            Err(LaminaError::Runtime("Malformed if expression".into()))
+            Err(Error::Runtime("Malformed if expression".into()))
         }
     } else {
-        Err(LaminaError::Runtime("Malformed if expression".into()))
+        Err(Error::Runtime("Malformed if expression".into()))
     }
 }
 
 // Define special form
-pub fn eval_define(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, LaminaError> {
+pub fn eval_define(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, Error> {
     if let Value::Pair(pair) = args {
         match &pair.0 {
             Value::Symbol(name) => {
@@ -100,7 +161,7 @@ pub fn eval_define(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, 
                     val_pair.0.clone()
                 } else {
                     // This should not happen with well-formed expressions
-                    return Err(LaminaError::Runtime("Malformed define".into()));
+                    return Err(Error::Runtime("Malformed define".into()));
                 };
 
                 // Evaluate the value expression
@@ -151,22 +212,22 @@ pub fn eval_define(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, 
                     env.borrow_mut().bindings.insert(name.clone(), proc);
                     Ok(Value::Nil)
                 } else {
-                    Err(LaminaError::Runtime(
+                    Err(Error::Runtime(
                         "First argument to define must be a symbol".into(),
                     ))
                 }
             }
-            _ => Err(LaminaError::Runtime(
+            _ => Err(Error::Runtime(
                 "First argument to define must be a symbol".into(),
             )),
         }
     } else {
-        Err(LaminaError::Runtime("Malformed define".into()))
+        Err(Error::Runtime("Malformed define".into()))
     }
 }
 
 // Set! special form
-pub fn eval_set(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, LaminaError> {
+pub fn eval_set(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, Error> {
     if let Value::Pair(pair) = args {
         if let Value::Symbol(name) = &pair.0 {
             // Get the actual value expression (it's the car of pair.1)
@@ -174,7 +235,7 @@ pub fn eval_set(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, Lam
                 val_pair.0.clone()
             } else {
                 // This should not happen with well-formed expressions
-                return Err(LaminaError::Runtime("Malformed set!".into()));
+                return Err(Error::Runtime("Malformed set!".into()));
             };
 
             // Evaluate the value expression
@@ -193,7 +254,7 @@ pub fn eval_set(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, Lam
                     drop(env_ref); // Explicitly drop the borrow before reassigning
                     current = next;
                 } else {
-                    return Err(LaminaError::Runtime(format!(
+                    return Err(Error::Runtime(format!(
                         "Undefined variable: {}",
                         name
                     )));
@@ -205,23 +266,23 @@ pub fn eval_set(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, Lam
                 env.borrow_mut().bindings.insert(name.clone(), value);
                 Ok(Value::Nil)
             } else {
-                Err(LaminaError::Runtime(format!(
+                Err(Error::Runtime(format!(
                     "Undefined variable: {}",
                     name
                 )))
             }
         } else {
-            Err(LaminaError::Runtime(
+            Err(Error::Runtime(
                 "First argument to set! must be a symbol".into(),
             ))
         }
     } else {
-        Err(LaminaError::Runtime("Malformed set!".into()))
+        Err(Error::Runtime("Malformed set!".into()))
     }
 }
 
 // Cond special form
-pub fn eval_cond(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, LaminaError> {
+pub fn eval_cond(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, Error> {
     let mut current = args;
     while let Value::Pair(pair) = current {
         let clause = &pair.0;
@@ -255,7 +316,7 @@ pub fn eval_cond(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, La
 }
 
 // Let special form
-pub fn eval_let(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, LaminaError> {
+pub fn eval_let(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, Error> {
     if let Value::Pair(pair) = args {
         let bindings = pair.0.clone();
 
@@ -264,7 +325,7 @@ pub fn eval_let(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, Lam
             body_pair.0.clone()
         } else {
             // This should not happen with well-formed expressions
-            return Err(LaminaError::Runtime("Malformed let".into()));
+            return Err(Error::Runtime("Malformed let".into()));
         };
 
         // Create new environment
@@ -283,7 +344,7 @@ pub fn eval_let(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, Lam
                         val_pair.0.clone()
                     } else {
                         // This should not happen with well-formed expressions
-                        return Err(LaminaError::Runtime("Malformed binding in let".into()));
+                        return Err(Error::Runtime("Malformed binding in let".into()));
                     };
 
                     let value = eval_with_env(value_expr, env.clone())?;
@@ -296,12 +357,12 @@ pub fn eval_let(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, Lam
         // Evaluate body
         eval_with_env(body, new_env)
     } else {
-        Err(LaminaError::Runtime("Malformed let".into()))
+        Err(Error::Runtime("Malformed let".into()))
     }
 }
 
 // Let* special form
-pub fn eval_let_star(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, LaminaError> {
+pub fn eval_let_star(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, Error> {
     if let Value::Pair(pair) = args {
         let bindings = pair.0.clone();
 
@@ -310,7 +371,7 @@ pub fn eval_let_star(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value
             body_pair.0.clone()
         } else {
             // This should not happen with well-formed expressions
-            return Err(LaminaError::Runtime("Malformed let*".into()));
+            return Err(Error::Runtime("Malformed let*".into()));
         };
 
         // Create new environment
@@ -326,7 +387,7 @@ pub fn eval_let_star(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value
                         val_pair.0.clone()
                     } else {
                         // This should not happen with well-formed expressions
-                        return Err(LaminaError::Runtime("Malformed binding in let*".into()));
+                        return Err(Error::Runtime("Malformed binding in let*".into()));
                     };
 
                     let value = eval_with_env(value_expr, current_env.clone())?;
@@ -345,12 +406,12 @@ pub fn eval_let_star(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value
         // Evaluate body
         eval_with_env(body, current_env)
     } else {
-        Err(LaminaError::Runtime("Malformed let*".into()))
+        Err(Error::Runtime("Malformed let*".into()))
     }
 }
 
 // Letrec special form
-pub fn eval_letrec(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, LaminaError> {
+pub fn eval_letrec(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, Error> {
     if let Value::Pair(pair) = args {
         let bindings = pair.0.clone();
 
@@ -359,7 +420,7 @@ pub fn eval_letrec(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, 
             body_pair.0.clone()
         } else {
             // This should not happen with well-formed expressions
-            return Err(LaminaError::Runtime("Malformed letrec".into()));
+            return Err(Error::Runtime("Malformed letrec".into()));
         };
 
         // Create new environment
@@ -392,7 +453,7 @@ pub fn eval_letrec(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, 
                         val_pair.0.clone()
                     } else {
                         // This should not happen with well-formed expressions
-                        return Err(LaminaError::Runtime("Malformed binding in letrec".into()));
+                        return Err(Error::Runtime("Malformed binding in letrec".into()));
                     };
 
                     let value = eval_with_env(value_expr, new_env.clone())?;
@@ -405,7 +466,7 @@ pub fn eval_letrec(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, 
         // Evaluate body
         eval_with_env(body, new_env)
     } else {
-        Err(LaminaError::Runtime("Malformed letrec".into()))
+        Err(Error::Runtime("Malformed letrec".into()))
     }
 }
 
@@ -413,7 +474,7 @@ pub fn eval_letrec(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, 
 pub fn eval_with_exception_handler(
     args: Value,
     env: Rc<RefCell<Environment>>,
-) -> Result<Value, LaminaError> {
+) -> Result<Value, Error> {
     if let Value::Pair(handler_pair) = args {
         let handler = eval_with_env(handler_pair.0.clone(), env.clone())?;
 
@@ -432,41 +493,41 @@ pub fn eval_with_exception_handler(
                                 let exception = Value::Symbol(e);
                                 match h(vec![exception]) {
                                     Ok(result) => Ok(result),
-                                    Err(new_e) => Err(LaminaError::Runtime(new_e)),
+                                    Err(new_e) => Err(Error::Runtime(new_e)),
                                 }
                             } else {
-                                Err(LaminaError::Runtime("Handler must be a procedure".into()))
+                                Err(Error::Runtime("Handler must be a procedure".into()))
                             }
                         }
                     }
                 }
-                _ => Err(LaminaError::Runtime("Thunk must be a procedure".into())),
+                _ => Err(Error::Runtime("Thunk must be a procedure".into())),
             }
         } else {
-            Err(LaminaError::Runtime(
+            Err(Error::Runtime(
                 "with-exception-handler requires a handler and a thunk".into(),
             ))
         }
     } else {
-        Err(LaminaError::Runtime(
+        Err(Error::Runtime(
             "with-exception-handler requires a handler and a thunk".into(),
         ))
     }
 }
 
-pub fn eval_raise(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, LaminaError> {
+pub fn eval_raise(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, Error> {
     if let Value::Pair(pair) = args {
         // Evaluate the argument
         let exception = eval_with_env(pair.0.clone(), env)?;
 
         // Raise the exception
-        Err(LaminaError::Runtime(format!("Exception: {:?}", exception)))
+        Err(Error::Runtime(format!("Exception: {:?}", exception)))
     } else {
-        Err(LaminaError::Runtime("raise requires an argument".into()))
+        Err(Error::Runtime("raise requires an argument".into()))
     }
 }
 
-pub fn eval_error(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, LaminaError> {
+pub fn eval_error(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, Error> {
     if let Value::Pair(pair) = args {
         // Evaluate the arguments
         let message = eval_with_env(pair.0.clone(), env.clone())?;
@@ -478,20 +539,20 @@ pub fn eval_error(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, L
         };
 
         // Raise the error
-        Err(LaminaError::Runtime(format!("Error: {}", error_msg)))
+        Err(Error::Runtime(format!("Error: {}", error_msg)))
     } else {
-        Err(LaminaError::Runtime("error requires an argument".into()))
+        Err(Error::Runtime("error requires an argument".into()))
     }
 }
 
-pub fn eval_guard(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, LaminaError> {
+pub fn eval_guard(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, Error> {
     if let Value::Pair(var_clauses_pair) = args {
         // Extract the variable and clauses
         if let Value::Pair(var_pair) = &var_clauses_pair.0 {
             let exception_var = match &var_pair.0 {
                 Value::Symbol(s) => s.clone(),
                 _ => {
-                    return Err(LaminaError::Runtime(
+                    return Err(Error::Runtime(
                         "Guard variable must be a symbol".into(),
                     ));
                 }
@@ -516,7 +577,7 @@ pub fn eval_guard(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, L
 
                         // Create an exception value from the error
                         let exception_value = match error {
-                            LaminaError::Runtime(e) => {
+                            Error::Runtime(e) => {
                                 if e.starts_with("Exception: ") {
                                     // This is from a 'raise' call, extract the actual value
                                     let symbol_content = e.trim_start_matches("Exception: ");
@@ -556,7 +617,7 @@ pub fn eval_guard(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, L
                                         continue;
                                     }
                                     _ => {
-                                        return Err(LaminaError::Runtime(
+                                        return Err(Error::Runtime(
                                             "Guard test must evaluate to a boolean".into(),
                                         ));
                                     }
@@ -578,20 +639,20 @@ pub fn eval_guard(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, L
                         }
 
                         // No matching clause, re-raise the exception
-                        Err(LaminaError::Runtime(format!(
+                        Err(Error::Runtime(format!(
                             "Unhandled exception: {:?}",
                             exception_value
                         )))
                     }
                 }
             } else {
-                Err(LaminaError::Runtime("Malformed guard expression".into()))
+                Err(Error::Runtime("Malformed guard expression".into()))
             }
         } else {
-            Err(LaminaError::Runtime("Malformed guard expression".into()))
+            Err(Error::Runtime("Malformed guard expression".into()))
         }
     } else {
-        Err(LaminaError::Runtime("Malformed guard expression".into()))
+        Err(Error::Runtime("Malformed guard expression".into()))
     }
 }
 
@@ -599,13 +660,13 @@ pub fn eval_guard(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, L
 pub fn eval_define_record_type(
     args: Value,
     env: Rc<RefCell<Environment>>,
-) -> Result<Value, LaminaError> {
+) -> Result<Value, Error> {
     if let Value::Pair(type_pair) = args {
         // Get the record type name
         let type_name = match &type_pair.0 {
             Value::Symbol(name) => name.clone(),
             _ => {
-                return Err(LaminaError::Runtime(
+                return Err(Error::Runtime(
                     "Record type name must be a symbol".into(),
                 ));
             }
@@ -619,13 +680,13 @@ pub fn eval_define_record_type(
                     if let Value::Symbol(ctor_name) = &ctor_spec.0 {
                         ctor_name.clone()
                     } else {
-                        return Err(LaminaError::Runtime(
+                        return Err(Error::Runtime(
                             "Constructor name must be a symbol".into(),
                         ));
                     }
                 }
                 _ => {
-                    return Err(LaminaError::Runtime(
+                    return Err(Error::Runtime(
                         "Invalid constructor specification".into(),
                     ));
                 }
@@ -639,7 +700,7 @@ pub fn eval_define_record_type(
                     if let Value::Symbol(param) = &param_pair.0 {
                         constructor_fields.push(param.clone());
                     } else {
-                        return Err(LaminaError::Runtime(
+                        return Err(Error::Runtime(
                             "Constructor parameter must be a symbol".into(),
                         ));
                     }
@@ -652,7 +713,7 @@ pub fn eval_define_record_type(
                 let predicate = match &pred_pair.0 {
                     Value::Symbol(pred) => pred.clone(),
                     _ => {
-                        return Err(LaminaError::Runtime("Predicate must be a symbol".into()));
+                        return Err(Error::Runtime("Predicate must be a symbol".into()));
                     }
                 };
 
@@ -666,7 +727,7 @@ pub fn eval_define_record_type(
                         let field_name = match &field_spec.0 {
                             Value::Symbol(name) => name.clone(),
                             _ => {
-                                return Err(LaminaError::Runtime(
+                                return Err(Error::Runtime(
                                     "Field name must be a symbol".into(),
                                 ));
                             }
@@ -677,7 +738,7 @@ pub fn eval_define_record_type(
                             let accessor = match &accessor_pair.0 {
                                 Value::Symbol(acc) => acc.clone(),
                                 _ => {
-                                    return Err(LaminaError::Runtime(
+                                    return Err(Error::Runtime(
                                         "Accessor must be a symbol".into(),
                                     ));
                                 }
@@ -688,7 +749,7 @@ pub fn eval_define_record_type(
                                 match &mutator_pair.0 {
                                     Value::Symbol(mut_name) => Some(mut_name.clone()),
                                     _ => {
-                                        return Err(LaminaError::Runtime(
+                                        return Err(Error::Runtime(
                                             "Mutator must be a symbol".into(),
                                         ));
                                     }
@@ -699,12 +760,12 @@ pub fn eval_define_record_type(
 
                             fields.push((field_name, accessor, mutator));
                         } else {
-                            return Err(LaminaError::Runtime(
+                            return Err(Error::Runtime(
                                 "Field specification must include an accessor".into(),
                             ));
                         }
                     } else {
-                        return Err(LaminaError::Runtime("Invalid field specification".into()));
+                        return Err(Error::Runtime("Invalid field specification".into()));
                     }
 
                     current = field_pair.1.clone();
@@ -881,17 +942,17 @@ pub fn eval_define_record_type(
 
                 Ok(Value::Nil)
             } else {
-                Err(LaminaError::Runtime(
+                Err(Error::Runtime(
                     "Malformed record type definition".into(),
                 ))
             }
         } else {
-            Err(LaminaError::Runtime(
+            Err(Error::Runtime(
                 "Malformed record type definition".into(),
             ))
         }
     } else {
-        Err(LaminaError::Runtime(
+        Err(Error::Runtime(
             "Malformed record type definition".into(),
         ))
     }

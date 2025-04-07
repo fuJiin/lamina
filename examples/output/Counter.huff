@@ -1,0 +1,70 @@
+/* Generated Huff Contract: Counter */
+
+// SPDX-License-Identifier: MIT
+// Compiler: Lamina-to-Huff
+
+#define macro GET_COUNTER_MACRO() = takes(0) returns(1) {
+    PUSH1 0x00
+    SLOAD
+    PUSH1 0x00
+    MSTORE
+    PUSH1 0x20
+    PUSH1 0x00
+    RETURN
+}
+
+
+#define macro INCREMENT_MACRO() = takes(0) returns(1) {
+    PUSH1 0x00
+    SLOAD
+    PUSH1 0x01
+    ADD
+    DUP1
+    PUSH1 0x00
+    SSTORE
+    PUSH1 0x00
+    MSTORE
+    PUSH1 0x20
+    PUSH1 0x00
+    RETURN
+}
+
+
+#define macro MAIN_MACRO() = takes(0) returns(0) {
+    PUSH1 0x00
+    CALLDATALOAD
+    PUSH1 0xe0
+    SHR
+    DUP1
+    PUSH4 0x8ada066e
+    EQ
+    PUSH1 0x00
+    // Jump to get_counter_branch if condition is met
+    __JUMPLABEL_get_counter_branch
+    JUMPI
+    DUP1
+    PUSH4 0xd09de08a
+    EQ
+    PUSH1 0x01
+    // Jump to increment_branch if condition is met
+    __JUMPLABEL_increment_branch
+    JUMPI
+    INVALID
+get_counter_branch:
+    // Call GET_COUNTER_MACRO
+increment_branch:
+    // Call INCREMENT_MACRO
+}
+
+
+#define function owner() view returns (address)
+
+#define macro MAIN() = takes(0) returns(0) {
+    // Get the function selector
+    0x00 calldataload 0xe0 shr
+    MAIN_MACRO()
+}
+
+#define macro CONSTRUCTOR() = takes(0) returns (0) {
+    // Default empty constructor
+}
