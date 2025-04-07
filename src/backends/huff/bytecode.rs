@@ -54,7 +54,7 @@ impl fmt::Display for HuffMacro {
         for instruction in &self.instructions {
             match instruction {
                 Instruction::Simple(op) => writeln!(f, "    {}", op.as_huff_str())?,
-                Instruction::Push(size, bytes) => {
+                Instruction::Push(_size, bytes) => {
                     let hex_str = bytes
                         .iter()
                         .map(|b| format!("{:02x}", b))
@@ -303,7 +303,5 @@ pub fn calculate_function_selector(name: &str, params: &[&str]) -> u32 {
     keccak.finalize(&mut hash);
 
     // Take first 4 bytes and convert to u32
-    let selector = u32::from_be_bytes([hash[0], hash[1], hash[2], hash[3]]);
-
-    selector
+    u32::from_be_bytes([hash[0], hash[1], hash[2], hash[3]])
 }

@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use crate::error::Error;
 use crate::value::Value;
@@ -269,16 +269,14 @@ fn process_define(define_expr: &Value, context: &mut CompilerContext) -> Result<
             Value::Symbol(name) => {
                 // Extract the value - could be a direct value or a pair containing a value
                 match &pair.1 {
-                    Value::Number(num) => {
-                        if let crate::value::NumberKind::Integer(slot) = num {
-                            context.register_storage_slot(name, *slot as u64);
-                        }
+                    Value::Number(crate::value::NumberKind::Integer(slot)) => {
+                        context.register_storage_slot(name, *slot as u64);
                     }
                     Value::Pair(inner_pair) => {
-                        if let Value::Number(num) = &inner_pair.0 {
-                            if let crate::value::NumberKind::Integer(slot) = num {
-                                context.register_storage_slot(name, *slot as u64);
-                            }
+                        if let Value::Number(crate::value::NumberKind::Integer(slot)) =
+                            &inner_pair.0
+                        {
+                            context.register_storage_slot(name, *slot as u64);
                         }
                     }
                     _ => {}
@@ -430,7 +428,7 @@ fn compile_function(
     // Set the current function name for the analyze_function_body function
     set_current_function_name(func_name);
 
-    let instructions: Vec<Instruction> = Vec::new();
+    let _instructions: Vec<Instruction> = Vec::new();
 
     // Analyze the function body to determine its type
     let func_type = analyze_function_body(body, context)?;
@@ -585,16 +583,12 @@ fn compile_function(
         // Default case for unknown function types
         FunctionType::Unknown => {
             // For now, create a basic macro that just reverts
-            let mut instructions = Vec::new();
-
-            instructions.push(Instruction::Comment(
-                "Function not yet implemented, reverting".to_string(),
-            ));
-
-            // Simple revert with no data
-            instructions.push(Instruction::Push(1, vec![0])); // Size: 0
-            instructions.push(Instruction::Push(1, vec![0])); // Offset: 0
-            instructions.push(Instruction::Simple(Opcode::REVERT));
+            let instructions = vec![
+                Instruction::Comment("Function not yet implemented, reverting".to_string()),
+                Instruction::Push(1, vec![0]), // Size: 0
+                Instruction::Push(1, vec![0]), // Offset: 0
+                Instruction::Simple(Opcode::REVERT),
+            ];
 
             // Create the macro and add it to the context
             let macro_def = HuffMacro {
