@@ -2,8 +2,6 @@ use lamina::evaluator;
 use lamina::ffi::{self, rustlib};
 use lamina::lexer;
 use lamina::parser;
-use lamina::value::Value;
-use std::rc::Rc;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Rust Module Example ===");
@@ -15,65 +13,65 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if args.len() != 2 {
                 return Err("math/add requires 2 arguments".into());
             }
-            
+
             let x = ffi::value_to_f64(&args[0])?;
             let y = ffi::value_to_f64(&args[1])?;
-            
+
             Ok(ffi::f64_to_value(x + y))
         });
-        
+
         module.add_function("subtract", |args| {
             if args.len() != 2 {
                 return Err("math/subtract requires 2 arguments".into());
             }
-            
+
             let x = ffi::value_to_f64(&args[0])?;
             let y = ffi::value_to_f64(&args[1])?;
-            
+
             Ok(ffi::f64_to_value(x - y))
         });
-        
+
         module.add_function("square", |args| {
             if args.len() != 1 {
                 return Err("math/square requires 1 argument".into());
             }
-            
+
             let x = ffi::value_to_f64(&args[0])?;
-            
+
             Ok(ffi::f64_to_value(x * x))
         });
     });
-    
+
     // Create and register a "string" module
     rustlib::create_module("string", |module| {
         module.add_function("length", |args| {
             if args.len() != 1 {
                 return Err("string/length requires 1 argument".into());
             }
-            
+
             let s = ffi::value_to_string(&args[0])?;
-            
+
             Ok(ffi::i64_to_value(s.len() as i64))
         });
-        
+
         module.add_function("uppercase", |args| {
             if args.len() != 1 {
                 return Err("string/uppercase requires 1 argument".into());
             }
-            
+
             let s = ffi::value_to_string(&args[0])?;
-            
+
             Ok(ffi::string_to_value(s.to_uppercase()))
         });
     });
-    
+
     // Set up a Lamina environment
     let env = evaluator::setup_initial_env();
-    
+
     // Import our Rust modules
     rustlib::import_module("math", &env).unwrap();
     rustlib::import_module("string", &env).unwrap();
-    
+
     // Use the modules from Lamina
     let code = r#"
     (begin
@@ -109,12 +107,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
       
       (list (math/square x) (string/uppercase message)))
     "#;
-    
+
     let tokens = lexer::lex(code)?;
     let expr = parser::parse(&tokens)?;
     let result = evaluator::eval_with_env(expr, env)?;
-    
+
     println!("\nFinal result: {}", result);
-    
+
     Ok(())
-} 
+}

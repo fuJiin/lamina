@@ -41,10 +41,9 @@ impl FFIRegistry {
     /// Load all registered functions into a Lamina environment
     pub fn load_into_env(&self, env: &Rc<RefCell<Environment>>) -> Result<(), LaminaError> {
         for (name, func) in &self.functions {
-            env.borrow_mut().bindings.insert(
-                name.clone(),
-                create_rust_fn_from_rc(name, func.clone()),
-            );
+            env.borrow_mut()
+                .bindings
+                .insert(name.clone(), create_rust_fn_from_rc(name, func.clone()));
         }
         Ok(())
     }
@@ -56,7 +55,7 @@ thread_local! {
 }
 
 /// Register a Rust function that can be called from Lamina
-pub fn register_function<F>(name: &str, func: F) 
+pub fn register_function<F>(name: &str, func: F)
 where
     F: Fn(Vec<Value>) -> Result<Value, String> + 'static,
 {
@@ -67,9 +66,7 @@ where
 
 /// Load all registered functions into the given environment
 pub fn load_ffi_functions(env: &Rc<RefCell<Environment>>) -> Result<(), LaminaError> {
-    FFI_REGISTRY.with(|registry| {
-        registry.borrow().load_into_env(env)
-    })
+    FFI_REGISTRY.with(|registry| registry.borrow().load_into_env(env))
 }
 
 // Convenience functions for converting between Rust and Lamina types
@@ -137,7 +134,7 @@ pub fn value_to_string(value: &Value) -> Result<String, String> {
 /// Convenience function to create a RustFn value directly from a function
 /// This helps prevent "dead code" warnings since we're explicitly constructing RustFn variants
 #[allow(dead_code)]
-pub fn create_rust_fn<F>(name: &str, func: F) -> Value 
+pub fn create_rust_fn<F>(name: &str, func: F) -> Value
 where
     F: Fn(Vec<Value>) -> Result<Value, String> + 'static,
 {
@@ -146,6 +143,9 @@ where
 
 /// Convenience function to create a RustFn value from an already Rc-wrapped function
 #[allow(dead_code)]
-pub fn create_rust_fn_from_rc(name: &str, func: Rc<dyn Fn(Vec<Value>) -> Result<Value, String>>) -> Value {
+pub fn create_rust_fn_from_rc(
+    name: &str,
+    func: Rc<dyn Fn(Vec<Value>) -> Result<Value, String>>,
+) -> Value {
     Value::RustFn(func, name.to_string())
-} 
+}

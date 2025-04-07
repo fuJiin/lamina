@@ -27,9 +27,9 @@ pub fn setup_initial_env() -> Rc<RefCell<Environment>> {
     env.borrow_mut()
         .bindings
         .insert("else".to_string(), Value::Boolean(true));
-    
+
     // Note: FFI functions are loaded separately to avoid circular dependencies
-    
+
     // Define standard arithmetic operators
     env.borrow_mut().bindings.insert(
         "+".to_string(),

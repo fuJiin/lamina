@@ -31,7 +31,7 @@ impl RustModule {
         for (name, func) in &self.functions {
             // Create qualified name: module-name/function-name
             let qualified_name = format!("{}/{}", self.name, name);
-            
+
             env.borrow_mut().bindings.insert(
                 qualified_name,
                 super::create_rust_fn_from_rc(&format!("{}.{}", self.name, name), func.clone()),
@@ -73,4 +73,4 @@ where
     let mut module = RustModule::new(name);
     setup_fn(&mut module);
     register_module(module);
-} 
+}

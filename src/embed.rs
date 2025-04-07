@@ -22,12 +22,12 @@ impl Interpreter {
     /// Create a new Lamina interpreter with a fresh environment
     pub fn new() -> Self {
         let env = evaluator::setup_initial_env();
-        
+
         // Load any registered FFI functions
         if let Err(e) = crate::ffi::load_ffi_functions(&env) {
             eprintln!("Warning: Failed to load FFI functions: {}", e);
         }
-        
+
         Interpreter { env }
     }
 
@@ -56,16 +56,19 @@ impl Interpreter {
     /// Call a Lamina procedure with the given arguments
     pub fn call(&self, proc_name: &str, args: Vec<Value>) -> Result<Value, LaminaError> {
         // Look up the procedure
-        let proc = self.get(proc_name).ok_or_else(|| {
-            LaminaError::Runtime(format!("Procedure not found: {}", proc_name))
-        })?;
+        let proc = self
+            .get(proc_name)
+            .ok_or_else(|| LaminaError::Runtime(format!("Procedure not found: {}", proc_name)))?;
 
-        println!("Debug - Calling procedure '{}' of type: {:?}", proc_name, proc);
+        println!(
+            "Debug - Calling procedure '{}' of type: {:?}",
+            proc_name, proc
+        );
 
         // Call the procedure
         match proc {
-            Value::Procedure(p) => p(args).map_err(|e| LaminaError::Runtime(e)),
-            Value::RustFn(f, _) => f(args).map_err(|e| LaminaError::Runtime(e)),
+            Value::Procedure(p) => p(args).map_err(LaminaError::Runtime),
+            Value::RustFn(f, _) => f(args).map_err(LaminaError::Runtime),
             _ => Err(LaminaError::Runtime(format!(
                 "{} is not a procedure: {:?}",
                 proc_name, proc
@@ -78,10 +81,10 @@ impl Interpreter {
     where
         F: Fn(Vec<Value>) -> Result<Value, String> + 'static,
     {
-        self.env.borrow_mut().bindings.insert(
-            name.to_string(),
-            crate::ffi::create_rust_fn(name, func),
-        );
+        self.env
+            .borrow_mut()
+            .bindings
+            .insert(name.to_string(), crate::ffi::create_rust_fn(name, func));
     }
 
     /// Get access to the interpreter's environment
@@ -103,9 +106,9 @@ pub fn eval(code: &str) -> Result<Value, LaminaError> {
 
 /// Convenience type aliases for working with Lamina from Rust
 pub mod types {
-    pub use crate::value::{NumberKind, Value};
     pub use crate::ffi::{
-        i64_to_value, f64_to_value, bool_to_value, string_to_value,
-        value_to_i64, value_to_f64, value_to_bool, value_to_string,
+        bool_to_value, f64_to_value, i64_to_value, string_to_value, value_to_bool, value_to_f64,
+        value_to_i64, value_to_string,
     };
-} 
+    pub use crate::value::{NumberKind, Value};
+}
