@@ -8,12 +8,17 @@ description = "Huff backend for the Lamina language"
 
 [dependencies]
 lamina.workspace = true
+lamina-ir.workspace = true
 thiserror.workspace = true
 tiny-keccak.workspace = true
 
 [[example]]
 name = "compile_to_huff"
 path = "examples/compile_to_huff.rs"
+
+[[example]]
+name = "compile_ir_to_huff"
+path = "examples/compile_ir_to_huff.rs"
 
 [lib]
 name = "lamina_huff"
