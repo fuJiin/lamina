@@ -34,7 +34,7 @@ pub enum Token {
 
     #[token("'")]
     Quote,
-    
+
     #[regex(r"[ \t\n\f]+", logos::skip)]
     #[regex(r";[^\n]*\n", logos::skip)]
     Error,
@@ -42,6 +42,7 @@ pub enum Token {
 
 pub fn lex(input: &str) -> Result<Vec<Token>, String> {
     let lexer = Token::lexer(input);
-    lexer.collect::<Result<_, _>>()
+    lexer
+        .collect::<Result<_, _>>()
         .map_err(|_| "Invalid token".to_string())
 }

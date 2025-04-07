@@ -1,16 +1,21 @@
-
 use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum LaminaError {
     #[error("Runtime error: {0}")]
-    RuntimeError(String),
+    Runtime(String),
     #[error("Parser error: {0}")]
-    ParserError(String),
+    Parser(String),
+    #[error("Lexer error: {0}")]
+    #[allow(dead_code)]
+    Lexer(String),
+    #[error("Evaluation error: {0}")]
+    #[allow(dead_code)]
+    Evaluation(String),
 }
 
 impl From<String> for LaminaError {
     fn from(s: String) -> Self {
-        LaminaError::RuntimeError(s)
+        LaminaError::Runtime(s)
     }
 }
