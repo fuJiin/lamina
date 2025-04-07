@@ -1,0 +1,23 @@
+[package]
+name = "lxc"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Native compiler for the Lamina language"
+
+[dependencies]
+lamina.workspace = true
+thiserror.workspace = true
+clap.workspace = true
+# For rustc integration
+rustc_driver = "0.0.0"  # We'll need to update this with the correct version
+rustc_interface = "0.0.0"  # We'll need to update this with the correct version
+
+[lib]
+name = "lxc_lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "lxc"
+path = "src/main.rs" 

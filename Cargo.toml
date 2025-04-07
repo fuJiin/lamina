@@ -2,7 +2,9 @@
 members = [
     "crates/lamina",
     "crates/lamina-huff",
+    "crates/lamina-ir",
     "crates/lx",
+    "crates/lxc",
 ]
 resolver = "2"
 
@@ -20,3 +22,7 @@ rustyline = "12.0"
 tiny-keccak = { version = "2.0", features = ["keccak"] }
 clap = { version = "4.4", features = ["derive"] }
 lamina = { path = "crates/lamina" }
+lamina-ir = { path = "crates/lamina-ir" }
+lamina-huff = { path = "crates/lamina-huff" }
+lxc = { path = "crates/lxc" }
+derive_more = "0.99"

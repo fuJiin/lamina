@@ -1,43 +1,93 @@
 # Lamina
 
-Lamina is a Scheme-inspired language with a modular design that can target different backends. While it has robust support for smart contract development, its architecture allows for various compilation targets and use cases.
+Lamina is a Scheme-inspired language for smart contracts and native applications with an emphasis on functional programming and strong typing.
+
+## Feature/LXC Branch
+
+This branch introduces a new architecture to support compiling Lamina code to machine code and other backends:
+
+### Architecture
+
+Lamina now uses a multi-stage compilation pipeline with the following components:
+
+1. **Frontend**: Parses source code and performs syntax and semantic analysis, generating a high-level IR.
+2. **Middle-End**: Optimizes the high-level IR and translates it into backend-specific representations.
+3. **Backends**: 
+   - Native: Uses `rustc` components to emit machine code for native targets
+   - EVM: Generates Huff code for Ethereum Virtual Machine
+
+### Commands
+
+The main CLI tool is `lx`, which now supports the following commands:
+
+```
+lx [FILE] [ARGS...]      # Run a Lamina file or start REPL if no file provided
+lx new NAME              # Create a new Lamina project
+lx init                  # Initialize a Lamina project in the current directory
+lx build                 # Build the Lamina project using the configured backend
+lx run SCRIPT            # Run a Lamina script
+lx repl                  # Start the Lamina REPL
+```
+
+Additionally, we now have a separate `lxc` compiler tool for advanced compilation options:
+
+```
+lxc FILE                # Compile a Lamina file to native code
+lxc check FILE          # Check a Lamina file for errors
+lxc ir FILE             # Print the IR for a Lamina file
+```
+
+### REPL Environment
+
+The integrated REPL environment allows for interactive development with:
+
+- Dynamic compilation and execution
+- Immediate feedback
+- Ability to load and modify definitions on the fly
 
 ## Project Structure
 
-The Lamina project is structured as a Rust workspace containing these crates:
+```
+crates/
+  ├── lamina/        # Core language implementation
+  ├── lamina-ir/     # Intermediate representation
+  ├── lamina-huff/   # EVM backend using Huff
+  ├── lx/            # Main CLI tool
+  └── lxc/           # Native compiler
+```
 
-- **[lamina](crates/lamina)** - The core language interpreter and compiler
-- **[lamina-huff](crates/lamina-huff)** - Backend for compiling Lamina to Huff (EVM assembly)
-- **[lx](crates/lx)** - Build tool for Lamina projects
-
-## Getting Started
-
-### Installation
+## Installation
 
 ```bash
 # Clone the repository
 git clone https://github.com/yourusername/lamina.git
 cd lamina
 
-# Build all components
+# Build the project
 cargo build
+
+# Install the CLI tools
+cargo install --path crates/lx
+cargo install --path crates/lxc
 ```
 
-### Running the REPL
-
-```bash
-cargo run -p lamina
-```
-
-### Building a Project with lx
+## Getting Started
 
 ```bash
 # Create a new project
-cargo run -p lx -- new my-project
+lx new my-project
+
+# Enter the project directory
 cd my-project
 
+# Run the REPL
+lx repl
+
+# Compile and run a file
+lx run examples/hello.lam
+
 # Build the project
-cargo run -p lx -- build
+lx build
 ```
 
 ## Example Lamina Code

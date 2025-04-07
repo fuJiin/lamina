@@ -1,0 +1,16 @@
+[package]
+name = "lamina-ir"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Intermediate representation for the Lamina language"
+
+[dependencies]
+thiserror.workspace = true
+# For implementing a good visitor pattern
+derive_more = "0.99"
+
+[lib]
+name = "lamina_ir"
+path = "src/lib.rs" 
