@@ -22,9 +22,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
       ;; Increment the counter
       (define (increment)
         (begin
-          (define current (get-counter))
+          (define current (storage-load counter-slot))
           (storage-store counter-slot (+ current 1))
-          (get-counter)))
+          (storage-load counter-slot)))
           
       ;; Handle function dispatch
       (define (main selector)

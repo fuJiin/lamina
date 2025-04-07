@@ -19,6 +19,12 @@ pub enum Instruction {
 
     /// Conditional jump to a label
     JumpToIf(String),
+    
+    /// Jump label for jumpdest
+    JumpLabel(String),
+    
+    /// Call to another macro
+    MacroCall(String),
 
     /// Comment for generated code
     Comment(String),
@@ -62,6 +68,14 @@ impl fmt::Display for HuffMacro {
                     writeln!(f, "    // Jump to {} if condition is met", label)?;
                     writeln!(f, "    JUMPI")?;
                 }
+                Instruction::JumpLabel(label) => {
+                    // For jump labels, we need to generate a proper label reference
+                    writeln!(f, "    PUSH1 [{}]", label)?;
+                },
+                Instruction::MacroCall(macro_name) => {
+                    // For macro calls, just reference the macro directly
+                    writeln!(f, "    {}", macro_name)?;
+                },
                 Instruction::Comment(comment) => writeln!(f, "    // {}", comment)?,
             }
         }
@@ -98,11 +112,16 @@ impl fmt::Display for HuffContract {
         // Main macro is required
         writeln!(f, "{}\n", self.main)?;
 
-        // Define the Huff contract structure
-        writeln!(f, "#define function getCounter() view returns (uint256)")?;
-        writeln!(f, "#define function increment() nonpayable returns (uint256)")?;
-        writeln!(f, "#define function getValue() view returns (uint256)")?;
-        writeln!(f, "#define function setValue(uint256) nonpayable returns (uint256)")?;
+        // Define the Huff contract functions based on the available macros
+        for mac in &self.macros {
+            // Convert macro names to function definitions
+            // Format: macro_name -> functionName
+            let func_name = macro_to_function_name(&mac.name);
+            
+            // Simple return type detection - all functions return uint256 for now
+            // In a real implementation, this would be determined by analyzing the function
+            writeln!(f, "#define function {}() view returns (uint256)", func_name)?;
+        }
         
         writeln!(f, "\n#define macro MAIN() = takes(0) returns(0) {{")?;
         writeln!(f, "    {}_MACRO()", self.main.name.to_uppercase())?;
@@ -118,4 +137,23 @@ impl fmt::Display for HuffContract {
             writeln!(f, "}}")
         }
     }
+}
+
+/// Convert a macro name to a function name in camelCase
+fn macro_to_function_name(macro_name: &str) -> String {
+    // Convert snake_case or kebab-case to camelCase
+    let parts: Vec<&str> = macro_name.split(|c| c == '_' || c == '-').collect();
+    if parts.is_empty() {
+        return String::new();
+    }
+    
+    let mut result = parts[0].to_string();
+    for part in parts.iter().skip(1) {
+        if !part.is_empty() {
+            result.push_str(&part[0..1].to_uppercase());
+            result.push_str(&part[1..]);
+        }
+    }
+    
+    result
 }
