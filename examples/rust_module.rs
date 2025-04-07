@@ -1,4 +1,5 @@
 use lamina::evaluator;
+use lamina::evaluator::environment::setup_initial_env;
 use lamina::ffi::{self, rustlib};
 use lamina::lexer;
 use lamina::parser;
@@ -66,7 +67,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     // Set up a Lamina environment
-    let env = evaluator::setup_initial_env();
+    let env = setup_initial_env();
 
     // Import our Rust modules
     rustlib::import_module("math", &env).unwrap();

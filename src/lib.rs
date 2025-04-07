@@ -1,4 +1,5 @@
 // Export the main modules
+pub mod backends;
 pub mod embed;
 pub mod error;
 pub mod evaluator;
@@ -6,7 +7,6 @@ pub mod ffi;
 pub mod lexer;
 pub mod parser;
 pub mod value;
-pub mod backends;
 
 use std::cell::RefCell;
 use std::rc::Rc;

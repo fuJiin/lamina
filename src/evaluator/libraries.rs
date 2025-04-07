@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::error::Error;
-use crate::value::{Environment, Library, Value, NumberKind};
+use crate::value::{Environment, Library, NumberKind, Value};
 
 use super::environment::create_environment;
 
@@ -33,7 +33,7 @@ pub fn number_to_i64(val: &Value) -> Result<i64, String> {
 // Base library registration
 pub fn register_base_library(env: Rc<RefCell<Environment>>) {
     let base_env = create_environment(Some(env.clone()));
-    
+
     // Add basic list operations
     base_env.borrow_mut().bindings.insert(
         "append".to_string(),
@@ -42,7 +42,7 @@ pub fn register_base_library(env: Rc<RefCell<Environment>>) {
             Ok(Value::Nil)
         })),
     );
-    
+
     // Register the library in the parent environment
     env.borrow_mut().bindings.insert(
         "base".to_string(),
@@ -58,7 +58,7 @@ pub fn register_base_library(env: Rc<RefCell<Environment>>) {
 // File library registration
 pub fn register_file_library(env: Rc<RefCell<Environment>>) {
     let file_env = create_environment(Some(env.clone()));
-    
+
     // Add file operations
     file_env.borrow_mut().bindings.insert(
         "file-exists?".to_string(),
@@ -67,7 +67,7 @@ pub fn register_file_library(env: Rc<RefCell<Environment>>) {
             Ok(Value::Boolean(false))
         })),
     );
-    
+
     // Register the library in the parent environment
     env.borrow_mut().bindings.insert(
         "file".to_string(),
@@ -83,7 +83,7 @@ pub fn register_file_library(env: Rc<RefCell<Environment>>) {
 // Math library registration
 pub fn register_math_library(env: Rc<RefCell<Environment>>) {
     let math_env = create_environment(Some(env.clone()));
-    
+
     // Add math operations
     math_env.borrow_mut().bindings.insert(
         "abs".to_string(),
@@ -101,7 +101,7 @@ pub fn register_math_library(env: Rc<RefCell<Environment>>) {
             }
         })),
     );
-    
+
     // Register the library in the parent environment
     env.borrow_mut().bindings.insert(
         "math".to_string(),
@@ -114,7 +114,7 @@ pub fn register_math_library(env: Rc<RefCell<Environment>>) {
     );
 }
 
-// EVM library registration 
+// EVM library registration
 pub fn register_evm_library(env: Rc<RefCell<Environment>>) {
     let evm_env = create_environment(Some(env.clone()));
 
@@ -173,4 +173,4 @@ pub fn setup_libraries(env: Rc<RefCell<Environment>>) -> Result<(), Error> {
     register_math_library(env.clone());
     register_evm_library(env.clone());
     Ok(())
-} 
+}

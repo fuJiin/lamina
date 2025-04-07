@@ -23,8 +23,7 @@ pub fn eval_with_env(expr: Value, env: Rc<RefCell<Environment>>) -> Result<Value
     match expr {
         Value::Symbol(s) => {
             // Look up the symbol in the environment
-            environment::lookup_variable(&s, env.clone())
-                .map_err(|e| Error::Runtime(e))
+            environment::lookup_variable(&s, env.clone()).map_err(Error::Runtime)
         }
         Value::Pair(pair) => {
             // Get the operator (first element of the list)
@@ -86,8 +85,13 @@ pub fn eval_with_env(expr: Value, env: Rc<RefCell<Environment>>) -> Result<Value
             }
         }
         // Self-evaluating forms
-        Value::Number(_) | Value::String(_) | Value::Boolean(_) | Value::Character(_)
-        | Value::Vector(_) | Value::Nil | Value::Bytevector(_) => Ok(expr),
+        Value::Number(_)
+        | Value::String(_)
+        | Value::Boolean(_)
+        | Value::Character(_)
+        | Value::Vector(_)
+        | Value::Nil
+        | Value::Bytevector(_) => Ok(expr),
 
         // Other forms
         Value::Procedure(_) => Ok(expr),
@@ -102,8 +106,8 @@ pub fn eval_with_env(expr: Value, env: Rc<RefCell<Environment>>) -> Result<Value
 /// Apply a function to arguments
 fn apply(func: Value, args: Vec<Value>) -> Result<Value, Error> {
     match func {
-        Value::Procedure(p) => p(args).map_err(|e| Error::Runtime(e)),
-        Value::RustFn(f, _) => f(args).map_err(|e| Error::Runtime(e)),
+        Value::Procedure(p) => p(args).map_err(Error::Runtime),
+        Value::RustFn(f, _) => f(args).map_err(Error::Runtime),
         _ => Err(Error::Runtime(format!("Not a function: {:?}", func))),
     }
 }
@@ -112,11 +116,11 @@ fn apply(func: Value, args: Vec<Value>) -> Result<Value, Error> {
 fn eval_begin(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, Error> {
     let mut result = Value::Nil;
     let mut remaining_args = args;
-    
+
     while let Value::Pair(pair) = remaining_args {
         result = eval_with_env(pair.0.clone(), env.clone())?;
         remaining_args = pair.1.clone();
     }
-    
+
     Ok(result)
 }

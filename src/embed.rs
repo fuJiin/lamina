@@ -41,7 +41,10 @@ impl Interpreter {
 
     /// Define a variable in the interpreter's environment
     pub fn define(&self, name: &str, value: Value) {
-        self.env.borrow_mut().bindings.insert(name.to_string(), value);
+        self.env
+            .borrow_mut()
+            .bindings
+            .insert(name.to_string(), value);
     }
 
     /// Set an existing variable in the interpreter's environment
@@ -51,10 +54,7 @@ impl Interpreter {
 
     /// Get a variable from the interpreter's environment
     pub fn get(&self, name: &str) -> Option<Value> {
-        match evaluator::environment::lookup_variable(name, self.env.clone()) {
-            Ok(value) => Some(value),
-            Err(_) => None,
-        }
+        evaluator::environment::lookup_variable(name, self.env.clone()).ok()
     }
 
     /// Call a Lamina procedure with the given arguments

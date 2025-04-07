@@ -10,62 +10,50 @@ use super::eval_with_env;
 // Add this function that wasn't in our snapshot
 pub fn register_special_forms(env: Rc<RefCell<Environment>>) {
     // Register all the special forms
-    env.borrow_mut().bindings.insert(
-        "lambda".to_string(),
-        Value::Symbol("lambda".to_string())
-    );
-    env.borrow_mut().bindings.insert(
-        "if".to_string(), 
-        Value::Symbol("if".to_string())
-    );
-    env.borrow_mut().bindings.insert(
-        "define".to_string(),
-        Value::Symbol("define".to_string())
-    );
-    env.borrow_mut().bindings.insert(
-        "set!".to_string(), 
-        Value::Symbol("set!".to_string())
-    );
-    env.borrow_mut().bindings.insert(
-        "cond".to_string(),
-        Value::Symbol("cond".to_string())
-    );
-    env.borrow_mut().bindings.insert(
-        "let".to_string(),
-        Value::Symbol("let".to_string())
-    );
-    env.borrow_mut().bindings.insert(
-        "let*".to_string(),
-        Value::Symbol("let*".to_string())
-    );
-    env.borrow_mut().bindings.insert(
-        "letrec".to_string(),
-        Value::Symbol("letrec".to_string())
-    );
+    env.borrow_mut()
+        .bindings
+        .insert("lambda".to_string(), Value::Symbol("lambda".to_string()));
+    env.borrow_mut()
+        .bindings
+        .insert("if".to_string(), Value::Symbol("if".to_string()));
+    env.borrow_mut()
+        .bindings
+        .insert("define".to_string(), Value::Symbol("define".to_string()));
+    env.borrow_mut()
+        .bindings
+        .insert("set!".to_string(), Value::Symbol("set!".to_string()));
+    env.borrow_mut()
+        .bindings
+        .insert("cond".to_string(), Value::Symbol("cond".to_string()));
+    env.borrow_mut()
+        .bindings
+        .insert("let".to_string(), Value::Symbol("let".to_string()));
+    env.borrow_mut()
+        .bindings
+        .insert("let*".to_string(), Value::Symbol("let*".to_string()));
+    env.borrow_mut()
+        .bindings
+        .insert("letrec".to_string(), Value::Symbol("letrec".to_string()));
     env.borrow_mut().bindings.insert(
         "with-exception-handler".to_string(),
-        Value::Symbol("with-exception-handler".to_string())
+        Value::Symbol("with-exception-handler".to_string()),
     );
-    env.borrow_mut().bindings.insert(
-        "raise".to_string(),
-        Value::Symbol("raise".to_string())
-    );
-    env.borrow_mut().bindings.insert(
-        "error".to_string(),
-        Value::Symbol("error".to_string())
-    );
-    env.borrow_mut().bindings.insert(
-        "guard".to_string(),
-        Value::Symbol("guard".to_string())
-    );
+    env.borrow_mut()
+        .bindings
+        .insert("raise".to_string(), Value::Symbol("raise".to_string()));
+    env.borrow_mut()
+        .bindings
+        .insert("error".to_string(), Value::Symbol("error".to_string()));
+    env.borrow_mut()
+        .bindings
+        .insert("guard".to_string(), Value::Symbol("guard".to_string()));
     env.borrow_mut().bindings.insert(
         "define-record-type".to_string(),
-        Value::Symbol("define-record-type".to_string())
+        Value::Symbol("define-record-type".to_string()),
     );
-    env.borrow_mut().bindings.insert(
-        "begin".to_string(),
-        Value::Symbol("begin".to_string())
-    );
+    env.borrow_mut()
+        .bindings
+        .insert("begin".to_string(), Value::Symbol("begin".to_string()));
 }
 
 // Lambda special form
@@ -254,10 +242,7 @@ pub fn eval_set(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, Err
                     drop(env_ref); // Explicitly drop the borrow before reassigning
                     current = next;
                 } else {
-                    return Err(Error::Runtime(format!(
-                        "Undefined variable: {}",
-                        name
-                    )));
+                    return Err(Error::Runtime(format!("Undefined variable: {}", name)));
                 }
             }
 
@@ -266,10 +251,7 @@ pub fn eval_set(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, Err
                 env.borrow_mut().bindings.insert(name.clone(), value);
                 Ok(Value::Nil)
             } else {
-                Err(Error::Runtime(format!(
-                    "Undefined variable: {}",
-                    name
-                )))
+                Err(Error::Runtime(format!("Undefined variable: {}", name)))
             }
         } else {
             Err(Error::Runtime(
@@ -552,9 +534,7 @@ pub fn eval_guard(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, E
             let exception_var = match &var_pair.0 {
                 Value::Symbol(s) => s.clone(),
                 _ => {
-                    return Err(Error::Runtime(
-                        "Guard variable must be a symbol".into(),
-                    ));
+                    return Err(Error::Runtime("Guard variable must be a symbol".into()));
                 }
             };
 
@@ -657,18 +637,13 @@ pub fn eval_guard(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, E
 }
 
 // Implement define-record-type form
-pub fn eval_define_record_type(
-    args: Value,
-    env: Rc<RefCell<Environment>>,
-) -> Result<Value, Error> {
+pub fn eval_define_record_type(args: Value, env: Rc<RefCell<Environment>>) -> Result<Value, Error> {
     if let Value::Pair(type_pair) = args {
         // Get the record type name
         let type_name = match &type_pair.0 {
             Value::Symbol(name) => name.clone(),
             _ => {
-                return Err(Error::Runtime(
-                    "Record type name must be a symbol".into(),
-                ));
+                return Err(Error::Runtime("Record type name must be a symbol".into()));
             }
         };
 
@@ -680,15 +655,11 @@ pub fn eval_define_record_type(
                     if let Value::Symbol(ctor_name) = &ctor_spec.0 {
                         ctor_name.clone()
                     } else {
-                        return Err(Error::Runtime(
-                            "Constructor name must be a symbol".into(),
-                        ));
+                        return Err(Error::Runtime("Constructor name must be a symbol".into()));
                     }
                 }
                 _ => {
-                    return Err(Error::Runtime(
-                        "Invalid constructor specification".into(),
-                    ));
+                    return Err(Error::Runtime("Invalid constructor specification".into()));
                 }
             };
 
@@ -727,9 +698,7 @@ pub fn eval_define_record_type(
                         let field_name = match &field_spec.0 {
                             Value::Symbol(name) => name.clone(),
                             _ => {
-                                return Err(Error::Runtime(
-                                    "Field name must be a symbol".into(),
-                                ));
+                                return Err(Error::Runtime("Field name must be a symbol".into()));
                             }
                         };
 
@@ -738,9 +707,7 @@ pub fn eval_define_record_type(
                             let accessor = match &accessor_pair.0 {
                                 Value::Symbol(acc) => acc.clone(),
                                 _ => {
-                                    return Err(Error::Runtime(
-                                        "Accessor must be a symbol".into(),
-                                    ));
+                                    return Err(Error::Runtime("Accessor must be a symbol".into()));
                                 }
                             };
 
@@ -942,18 +909,12 @@ pub fn eval_define_record_type(
 
                 Ok(Value::Nil)
             } else {
-                Err(Error::Runtime(
-                    "Malformed record type definition".into(),
-                ))
+                Err(Error::Runtime("Malformed record type definition".into()))
             }
         } else {
-            Err(Error::Runtime(
-                "Malformed record type definition".into(),
-            ))
+            Err(Error::Runtime("Malformed record type definition".into()))
         }
     } else {
-        Err(Error::Runtime(
-            "Malformed record type definition".into(),
-        ))
+        Err(Error::Runtime("Malformed record type definition".into()))
     }
 }

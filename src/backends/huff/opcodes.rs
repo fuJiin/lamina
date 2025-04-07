@@ -13,7 +13,7 @@ pub enum Opcode {
     SWAP1,
     SWAP2,
     SWAP16,
-    
+
     // Arithmetic operations
     ADD,
     SUB,
@@ -25,7 +25,7 @@ pub enum Opcode {
     ADDMOD,
     MULMOD,
     EXP,
-    
+
     // Comparison operations
     LT,
     GT,
@@ -33,7 +33,7 @@ pub enum Opcode {
     SGT,
     EQ,
     ISZERO,
-    
+
     // Bitwise operations
     AND,
     OR,
@@ -42,23 +42,23 @@ pub enum Opcode {
     SHL,
     SHR,
     SAR,
-    
+
     // Memory operations
     MLOAD,
     MSTORE,
     MSTORE8,
     MSIZE,
-    
+
     // Storage operations
     SLOAD,
     SSTORE,
-    
+
     // Program counter operations
     JUMP,
     JUMPI,
     PC,
     JUMPDEST,
-    
+
     // Environment operations
     ADDRESS,
     BALANCE,
@@ -76,7 +76,7 @@ pub enum Opcode {
     RETURNDATASIZE,
     RETURNDATACOPY,
     EXTCODEHASH,
-    
+
     // Block operations
     BLOCKHASH,
     COINBASE,
@@ -87,14 +87,14 @@ pub enum Opcode {
     CHAINID,
     SELFBALANCE,
     BASEFEE,
-    
+
     // Control flow operations
     STOP,
     RETURN,
     REVERT,
     INVALID,
     SELFDESTRUCT,
-    
+
     // Call operations
     CALL,
     CALLCODE,
@@ -102,14 +102,14 @@ pub enum Opcode {
     STATICCALL,
     CREATE,
     CREATE2,
-    
+
     // Log operations
     LOG0,
     LOG1,
     LOG2,
     LOG3,
     LOG4,
-    
+
     // Keccak
     SHA3,
 }
@@ -130,7 +130,7 @@ impl Opcode {
             Opcode::SWAP1 => "SWAP1",
             Opcode::SWAP2 => "SWAP2",
             Opcode::SWAP16 => "SWAP16",
-            
+
             // Arithmetic operations
             Opcode::ADD => "ADD",
             Opcode::SUB => "SUB",
@@ -142,7 +142,7 @@ impl Opcode {
             Opcode::ADDMOD => "ADDMOD",
             Opcode::MULMOD => "MULMOD",
             Opcode::EXP => "EXP",
-            
+
             // Comparison operations
             Opcode::LT => "LT",
             Opcode::GT => "GT",
@@ -150,7 +150,7 @@ impl Opcode {
             Opcode::SGT => "SGT",
             Opcode::EQ => "EQ",
             Opcode::ISZERO => "ISZERO",
-            
+
             // Bitwise operations
             Opcode::AND => "AND",
             Opcode::OR => "OR",
@@ -159,23 +159,23 @@ impl Opcode {
             Opcode::SHL => "SHL",
             Opcode::SHR => "SHR",
             Opcode::SAR => "SAR",
-            
+
             // Memory operations
             Opcode::MLOAD => "MLOAD",
             Opcode::MSTORE => "MSTORE",
             Opcode::MSTORE8 => "MSTORE8",
             Opcode::MSIZE => "MSIZE",
-            
+
             // Storage operations
             Opcode::SLOAD => "SLOAD",
             Opcode::SSTORE => "SSTORE",
-            
+
             // Program counter operations
             Opcode::JUMP => "JUMP",
             Opcode::JUMPI => "JUMPI",
             Opcode::PC => "PC",
             Opcode::JUMPDEST => "JUMPDEST",
-            
+
             // Environment operations
             Opcode::ADDRESS => "ADDRESS",
             Opcode::BALANCE => "BALANCE",
@@ -193,7 +193,7 @@ impl Opcode {
             Opcode::RETURNDATASIZE => "RETURNDATASIZE",
             Opcode::RETURNDATACOPY => "RETURNDATACOPY",
             Opcode::EXTCODEHASH => "EXTCODEHASH",
-            
+
             // Block operations
             Opcode::BLOCKHASH => "BLOCKHASH",
             Opcode::COINBASE => "COINBASE",
@@ -204,14 +204,14 @@ impl Opcode {
             Opcode::CHAINID => "CHAINID",
             Opcode::SELFBALANCE => "SELFBALANCE",
             Opcode::BASEFEE => "BASEFEE",
-            
+
             // Control flow operations
             Opcode::STOP => "STOP",
             Opcode::RETURN => "RETURN",
             Opcode::REVERT => "REVERT",
             Opcode::INVALID => "INVALID",
             Opcode::SELFDESTRUCT => "SELFDESTRUCT",
-            
+
             // Call operations
             Opcode::CALL => "CALL",
             Opcode::CALLCODE => "CALLCODE",
@@ -219,14 +219,14 @@ impl Opcode {
             Opcode::STATICCALL => "STATICCALL",
             Opcode::CREATE => "CREATE",
             Opcode::CREATE2 => "CREATE2",
-            
+
             // Log operations
             Opcode::LOG0 => "LOG0",
             Opcode::LOG1 => "LOG1",
             Opcode::LOG2 => "LOG2",
             Opcode::LOG3 => "LOG3",
             Opcode::LOG4 => "LOG4",
-            
+
             // Keccak
             Opcode::SHA3 => "SHA3",
         }
@@ -236,4 +236,4 @@ impl Opcode {
 /// Helper function to convert Opcode to Huff representation
 pub fn to_huff(opcode: Opcode) -> &'static str {
     opcode.as_huff_str()
-} 
+}

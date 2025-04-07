@@ -36,35 +36,38 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     "#;
 
     println!("Parsing Lamina code...");
-    
+
     // Lexer and parse the code
     let tokens = lexer::lex(lamina_code)?;
     let expr = parser::parse(&tokens)?;
-    
+
     // Create an environment
     let env = setup_initial_env();
-    
+
     // Evaluate the code to ensure it's valid
     println!("Validating Lamina code...");
     let _ = evaluator::eval_with_env(expr.clone(), env)?;
-    
+
     // Compile to Huff
     println!("Compiling to Huff...");
     let huff_code = huff::compile(&expr, "Counter")?;
-    
+
     // Output directory
     let output_dir = Path::new("examples/output");
     if !output_dir.exists() {
         fs::create_dir_all(output_dir)?;
     }
-    
+
     // Write to a file
     let output_path = output_dir.join("Counter.huff");
     println!("Writing Huff code to: {}", output_path.display());
     fs::write(&output_path, huff_code)?;
-    
+
     println!("Compilation successful!");
-    println!("Generated Huff code has been written to {}", output_path.display());
-    
+    println!(
+        "Generated Huff code has been written to {}",
+        output_path.display()
+    );
+
     Ok(())
-} 
+}

@@ -1,4 +1,5 @@
 use lamina::evaluator;
+use lamina::evaluator::environment::setup_initial_env;
 use lamina::ffi;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -34,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     // Create a Lamina environment
-    let env = evaluator::setup_initial_env();
+    let env = setup_initial_env();
 
     // Run Lamina code that calls our Rust functions
     let code = r#"

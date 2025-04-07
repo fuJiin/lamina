@@ -1,6 +1,6 @@
 use crate::error::Error;
 use crate::lexer::Token;
-use crate::value::{Value, NumberKind};
+use crate::value::{NumberKind, Value};
 use std::rc::Rc;
 
 // Helper function to parse a number string into a NumberKind
@@ -50,7 +50,7 @@ fn parse_expr(tokens: &[Token], pos: usize) -> Result<(Value, usize), Error> {
         Token::Number(n) => {
             let num_kind = parse_number(n.clone())?;
             Ok((Value::Number(num_kind), pos + 1))
-        },
+        }
         Token::String(s) => Ok((Value::String(s.clone()), pos + 1)),
         Token::TrueValue => Ok((Value::Boolean(true), pos + 1)),
         Token::FalseValue => Ok((Value::Boolean(false), pos + 1)),
@@ -62,7 +62,7 @@ fn parse_expr(tokens: &[Token], pos: usize) -> Result<(Value, usize), Error> {
                 _ => return Err(Error::Parser(format!("Invalid character: {}", c))),
             };
             Ok((Value::Character(ch), pos + 1))
-        },
+        }
         Token::Error => Err(Error::Parser("Invalid token".to_string())),
     }
 }

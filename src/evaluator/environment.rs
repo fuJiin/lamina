@@ -1,11 +1,9 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::error::Error;
 use crate::value::{Environment, NumberKind, Value};
 
-use super::procedures::setup_initial_procedures;
 use super::libraries;
 use super::special_forms::register_special_forms;
 
@@ -19,16 +17,16 @@ pub fn create_environment(parent: Option<Rc<RefCell<Environment>>>) -> Rc<RefCel
 /// Setup the initial environment with standard procedures and special forms
 pub fn setup_initial_env() -> Rc<RefCell<Environment>> {
     let env = create_environment(None);
-    
+
     // Register special forms
     register_special_forms(env.clone());
-    
+
     // Add a marker for environment type
     env.borrow_mut().bindings.insert(
         "environment-type".to_string(),
         Value::Symbol("standard".to_string()),
     );
-    
+
     // Add boolean constants
     env.borrow_mut()
         .bindings
@@ -39,12 +37,12 @@ pub fn setup_initial_env() -> Rc<RefCell<Environment>> {
     env.borrow_mut()
         .bindings
         .insert("else".to_string(), Value::Boolean(true));
-    
+
     // Register libraries (EVM, etc.)
     if let Err(e) = libraries::setup_libraries(env.clone()) {
         eprintln!("Warning: Failed to setup libraries: {}", e);
     }
-    
+
     env
 }
 
@@ -72,15 +70,15 @@ pub fn register_procedures(env: Rc<RefCell<Environment>>) {
             if args.is_empty() {
                 return Err("- requires at least one argument".into());
             }
-            
+
             if args.len() == 1 {
                 // Negation
                 match &args[0] {
-                    Value::Number(n) => {
-                        match n {
-                            NumberKind::Integer(i) => Ok(Value::Number(NumberKind::Integer(-i))),
-                            NumberKind::Real(r) => Ok(Value::Number(NumberKind::Real(-r))),
-                            NumberKind::Rational(num, den) => Ok(Value::Number(NumberKind::Rational(-num, *den))),
+                    Value::Number(n) => match n {
+                        NumberKind::Integer(i) => Ok(Value::Number(NumberKind::Integer(-i))),
+                        NumberKind::Real(r) => Ok(Value::Number(NumberKind::Real(-r))),
+                        NumberKind::Rational(num, den) => {
+                            Ok(Value::Number(NumberKind::Rational(-num, *den)))
                         }
                     },
                     _ => Err("- requires numeric arguments".into()),
@@ -91,14 +89,14 @@ pub fn register_procedures(env: Rc<RefCell<Environment>>) {
                     Value::Number(n) => n.as_f64(),
                     _ => return Err("- requires numeric arguments".into()),
                 };
-                
+
                 for arg in args.iter().skip(1) {
                     match arg {
                         Value::Number(n) => result -= n.as_f64(),
                         _ => return Err("- requires numeric arguments".into()),
                     }
                 }
-                
+
                 Ok(Value::from(result))
             }
         })),
@@ -126,7 +124,7 @@ pub fn register_procedures(env: Rc<RefCell<Environment>>) {
             if args.is_empty() {
                 return Err("/ requires at least one argument".into());
             }
-            
+
             if args.len() == 1 {
                 // Reciprocal
                 match &args[0] {
@@ -136,7 +134,7 @@ pub fn register_procedures(env: Rc<RefCell<Environment>>) {
                             return Err("Division by zero".into());
                         }
                         Ok(Value::from(1.0 / value))
-                    },
+                    }
                     _ => Err("/ requires numeric arguments".into()),
                 }
             } else {
@@ -145,7 +143,7 @@ pub fn register_procedures(env: Rc<RefCell<Environment>>) {
                     Value::Number(n) => n.as_f64(),
                     _ => return Err("/ requires numeric arguments".into()),
                 };
-                
+
                 for arg in args.iter().skip(1) {
                     match arg {
                         Value::Number(n) => {
@@ -154,11 +152,11 @@ pub fn register_procedures(env: Rc<RefCell<Environment>>) {
                                 return Err("Division by zero".into());
                             }
                             result /= value;
-                        },
+                        }
                         _ => return Err("/ requires numeric arguments".into()),
                     }
                 }
-                
+
                 Ok(Value::from(result))
             }
         })),
@@ -171,23 +169,23 @@ pub fn register_procedures(env: Rc<RefCell<Environment>>) {
             if args.len() < 2 {
                 return Err("= requires at least two arguments".into());
             }
-            
+
             let first = match &args[0] {
                 Value::Number(n) => n.as_f64(),
                 _ => return Err("= requires numeric arguments".into()),
             };
-            
+
             for arg in args.iter().skip(1) {
                 match arg {
                     Value::Number(n) => {
                         if (n.as_f64() - first).abs() > f64::EPSILON {
                             return Ok(Value::Boolean(false));
                         }
-                    },
+                    }
                     _ => return Err("= requires numeric arguments".into()),
                 }
             }
-            
+
             Ok(Value::Boolean(true))
         })),
     );
@@ -295,11 +293,7 @@ pub fn lookup_variable(name: &str, env: Rc<RefCell<Environment>>) -> Result<Valu
 }
 
 // Set a variable's value in the environment chain
-pub fn set_variable(
-    name: &str,
-    value: Value,
-    env: Rc<RefCell<Environment>>,
-) -> Result<(), Error> {
+pub fn set_variable(name: &str, value: Value, env: Rc<RefCell<Environment>>) -> Result<(), Error> {
     let mut current_env = env;
 
     loop {
@@ -309,7 +303,10 @@ pub fn set_variable(
 
         if found {
             drop(env_ref); // Drop the borrow before mutating
-            current_env.borrow_mut().bindings.insert(name.to_string(), value);
+            current_env
+                .borrow_mut()
+                .bindings
+                .insert(name.to_string(), value);
             return Ok(());
         }
 
@@ -322,10 +319,7 @@ pub fn set_variable(
             }
             None => {
                 drop(env_ref); // Drop the borrow
-                return Err(Error::Runtime(format!(
-                    "Undefined variable: {}",
-                    name
-                )));
+                return Err(Error::Runtime(format!("Undefined variable: {}", name)));
             }
         }
     }

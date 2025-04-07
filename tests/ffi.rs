@@ -1,5 +1,6 @@
 use lamina::embed;
 use lamina::evaluator;
+use lamina::evaluator::environment::setup_initial_env;
 use lamina::ffi::{self, rustlib};
 use lamina::lexer;
 use lamina::parser;
@@ -36,7 +37,7 @@ fn test_registering_rust_function() {
 #[test]
 fn test_rust_module() {
     // Create a Lamina environment
-    let env = evaluator::setup_initial_env();
+    let env = setup_initial_env();
 
     // Create and register a test module
     rustlib::create_module("test-math", |module| {

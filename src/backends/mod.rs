@@ -1,2 +1,2 @@
 /// Backends for compiling Lamina code to various targets
-pub mod huff; 
+pub mod huff;
