@@ -4,6 +4,7 @@ use lamina::ffi::{self, rustlib};
 use lamina::lexer;
 use lamina::parser;
 use lamina::value::{NumberKind, Value};
+use std::f64::consts::PI;
 
 #[test]
 fn test_registering_rust_function() {
@@ -166,7 +167,7 @@ fn test_type_conversions() {
     assert_eq!(original_int, round_trip_int);
 
     // Float
-    let original_float = 3.14;
+    let original_float = PI;
     let lamina_float = ffi::f64_to_value(original_float);
     let round_trip_float = ffi::value_to_f64(&lamina_float).unwrap();
     assert_eq!(original_float, round_trip_float);

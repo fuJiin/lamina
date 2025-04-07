@@ -2,12 +2,13 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+use super::RustFunction;
 use crate::value::{Environment, Value};
 
 /// A module or set of Rust functions that can be imported into Lamina
 pub struct RustModule {
     name: String,
-    functions: HashMap<String, Rc<dyn Fn(Vec<Value>) -> Result<Value, String>>>,
+    functions: HashMap<String, RustFunction>,
 }
 
 impl RustModule {

@@ -7,9 +7,12 @@ use std::rc::Rc;
 use crate::error::LaminaError;
 use crate::value::{Environment, Value};
 
+/// Type alias for Rust functions callable from Lamina
+pub type RustFunction = Rc<dyn Fn(Vec<Value>) -> Result<Value, String>>;
+
 /// A registry to hold Rust foreign functions that can be called from Lamina
 pub struct FFIRegistry {
-    functions: HashMap<String, Rc<dyn Fn(Vec<Value>) -> Result<Value, String>>>,
+    functions: HashMap<String, RustFunction>,
 }
 
 impl Default for FFIRegistry {
@@ -34,7 +37,7 @@ impl FFIRegistry {
     }
 
     /// Get a function by name
-    pub fn get(&self, name: &str) -> Option<Rc<dyn Fn(Vec<Value>) -> Result<Value, String>>> {
+    pub fn get(&self, name: &str) -> Option<RustFunction> {
         self.functions.get(name).cloned()
     }
 
