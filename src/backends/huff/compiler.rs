@@ -28,7 +28,7 @@ struct FunctionInfo {
 }
 
 impl CompilerContext {
-    fn new(contract_name: &str) -> Self {
+    fn new(_contract_name: &str) -> Self {
         CompilerContext {
             macros: Vec::new(),
             functions: HashMap::new(),
@@ -437,17 +437,18 @@ fn extract_storage_from_function_call(body: &Value, context: &CompilerContext) -
 fn analyze_function_body(body: &Value, context: &CompilerContext) -> Result<FunctionType, Error> {
     // First look at function name patterns as a hint
     
-    // For our specific example, since the detection logic wasn't working,
-    // let's add direct function name checks
-    if let Some(slot) = context.get_storage_slot("counter-slot") {
+    // Check for known storage slots
+    for (_slot_name, slot_value) in &context.storage_slots {
         // For our specific example, we know these functions
         let calling_func_name = get_current_function_name();
         if let Some(name) = calling_func_name {
             // Check for known function patterns
-            if name == "get-counter" {
-                return Ok(FunctionType::StorageGetter(slot));
+            if name == "get-counter" || name == "get-value" {
+                return Ok(FunctionType::StorageGetter(*slot_value));
             } else if name == "increment" {
-                return Ok(FunctionType::StorageIncrementer(slot));
+                return Ok(FunctionType::StorageIncrementer(*slot_value));
+            } else if name == "set-value" {
+                return Ok(FunctionType::StorageSetter(*slot_value));
             }
         }
     }

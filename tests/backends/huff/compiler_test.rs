@@ -17,9 +17,9 @@ fn test_compile_counter_contract() {
       ;; Increment the counter
       (define (increment)
         (begin
-          (define current (get-counter))
+          (define current (storage-load counter-slot))
           (storage-store counter-slot (+ current 1))
-          (get-counter)))
+          (storage-load counter-slot)))
           
       ;; Handle function dispatch
       (define (main selector)
@@ -61,7 +61,7 @@ fn test_compile_simple_storage() {
       (define (set-value new-value)
         (begin
           (storage-store value-slot new-value)
-          (get-value)))
+          (storage-load value-slot)))
           
       ;; Handle function dispatch
       (define (main selector)
