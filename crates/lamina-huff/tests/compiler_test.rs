@@ -1,7 +1,7 @@
-use lamina_huff::huff;
-use lamina_huff::huff::bytecode::calculate_function_selector;
 use lamina::lexer;
 use lamina::parser;
+use lamina_huff::huff;
+use lamina_huff::huff::bytecode::calculate_function_selector;
 
 // Calculate selectors for the tests
 fn get_selector(name: &str, params: &[&str]) -> u32 {
@@ -121,7 +121,7 @@ fn test_function_selector_calculation() {
     let selector = calculate_function_selector("transferFrom", &[]);
     let selector_again = calculate_function_selector("transferFrom", &[]);
     assert_eq!(selector, selector_again);
-    
+
     // Test that different functions have different selectors
     let selector1 = calculate_function_selector("transfer", &[]);
     let selector2 = calculate_function_selector("transferFrom", &[]);

@@ -2,4 +2,4 @@
 mod compiler_test;
 
 #[cfg(test)]
-mod ir_compiler_test; 
+mod ir_compiler_test;

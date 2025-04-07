@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use lamina::error::Error;
-use lamina::value::{Value, NumberKind};
+use lamina::value::{NumberKind, Value};
 
 use super::bytecode::{FunctionSignature, HuffContract, HuffMacro, Instruction};
 use super::opcodes::Opcode;
@@ -273,9 +273,7 @@ fn process_define(define_expr: &Value, context: &mut CompilerContext) -> Result<
                         context.register_storage_slot(name, *slot as u64);
                     }
                     Value::Pair(inner_pair) => {
-                        if let Value::Number(NumberKind::Integer(slot)) =
-                            &inner_pair.0
-                        {
+                        if let Value::Number(NumberKind::Integer(slot)) = &inner_pair.0 {
                             context.register_storage_slot(name, *slot as u64);
                         }
                     }
