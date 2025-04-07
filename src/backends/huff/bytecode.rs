@@ -56,12 +56,11 @@ impl fmt::Display for HuffMacro {
                 Instruction::Label(label) => writeln!(f, "{}:", label)?,
                 Instruction::JumpTo(label) => {
                     writeln!(f, "    // Jump to {}", label)?;
-                    writeln!(f, "    __JUMPLABEL_{}", label)?
+                    writeln!(f, "    JUMP")?;
                 }
                 Instruction::JumpToIf(label) => {
                     writeln!(f, "    // Jump to {} if condition is met", label)?;
-                    writeln!(f, "    __JUMPLABEL_{}", label)?;
-                    writeln!(f, "    JUMPI")?
+                    writeln!(f, "    JUMPI")?;
                 }
                 Instruction::Comment(comment) => writeln!(f, "    // {}", comment)?,
             }
@@ -100,10 +99,12 @@ impl fmt::Display for HuffContract {
         writeln!(f, "{}\n", self.main)?;
 
         // Define the Huff contract structure
-        writeln!(f, "#define function owner() view returns (address)")?;
+        writeln!(f, "#define function getCounter() view returns (uint256)")?;
+        writeln!(f, "#define function increment() nonpayable returns (uint256)")?;
+        writeln!(f, "#define function getValue() view returns (uint256)")?;
+        writeln!(f, "#define function setValue(uint256) nonpayable returns (uint256)")?;
+        
         writeln!(f, "\n#define macro MAIN() = takes(0) returns(0) {{")?;
-        writeln!(f, "    // Get the function selector")?;
-        writeln!(f, "    0x00 calldataload 0xe0 shr")?;
         writeln!(f, "    {}_MACRO()", self.main.name.to_uppercase())?;
         writeln!(f, "}}")?;
 
