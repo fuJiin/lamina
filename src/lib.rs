@@ -4,6 +4,8 @@ pub mod evaluator;
 pub mod lexer;
 pub mod parser;
 pub mod value;
+pub mod ffi;
+pub mod embed;
 
 use std::cell::RefCell;
 use std::rc::Rc;

@@ -28,7 +28,8 @@ pub fn eval_with_env(expr: Value, env: Rc<RefCell<Environment>>) -> Result<Value
         | Value::Character(_)
         | Value::String(_)
         | Value::Nil
-        | Value::Procedure(_) => {
+        | Value::Procedure(_)
+        | Value::RustFn(_, _) => {
             // Self-evaluating expressions
             Ok(expr)
         }
@@ -139,6 +140,10 @@ fn eval_procedure_call(expr: Value, env: Rc<RefCell<Environment>>) -> Result<Val
             Value::Procedure(p) => match p(args) {
                 Ok(result) => Ok(result),
                 Err(e) => Err(LaminaError::Runtime(e)),
+            },
+            Value::RustFn(f, name) => match f(args) {
+                Ok(result) => Ok(result),
+                Err(e) => Err(LaminaError::Runtime(format!("Error in Rust function {}: {}", name, e))),
             },
             _ => Err(LaminaError::Runtime("Not a procedure".into())),
         }

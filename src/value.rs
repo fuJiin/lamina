@@ -82,6 +82,8 @@ pub enum Value {
     Bytevector(Rc<RefCell<Vec<u8>>>),
     // Add Library
     Library(Rc<RefCell<Library>>),
+    // Add RustFn to represent foreign Rust functions
+    RustFn(Rc<dyn Fn(Vec<Value>) -> Result<Value, String>>, String),
 }
 
 impl fmt::Debug for Value {
@@ -101,6 +103,7 @@ impl fmt::Debug for Value {
             Value::Record(r) => write!(f, "Record({})", r.type_info.name),
             Value::Bytevector(bytes) => write!(f, "Bytevector({:?})", bytes.borrow()),
             Value::Library(lib) => write!(f, "Library({:?})", lib.borrow().name),
+            Value::RustFn(_, name) => write!(f, "RustFn({})", name),
         }
     }
 }
@@ -217,6 +220,7 @@ impl fmt::Display for Value {
                 write!(f, ")")
             }
             Value::Environment(_) => write!(f, "#<environment>"),
+            Value::RustFn(_, name) => write!(f, "#<rust-function:{}>", name),
         }
     }
 }
