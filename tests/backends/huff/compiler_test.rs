@@ -1,10 +1,20 @@
 use lamina::backends::huff;
+use lamina::backends::huff::bytecode::calculate_function_selector;
 use lamina::lexer;
 use lamina::parser;
 
+// Calculate selectors for the tests
+fn get_selector(name: &str, params: &[&str]) -> u32 {
+    calculate_function_selector(name, params)
+}
+
 #[test]
 fn test_compile_counter_contract() {
-    // Counter contract Lamina code
+    // Calculate expected selectors
+    let get_counter_selector = format!("0x{:08x}", get_selector("get-counter", &[]));
+    let increment_selector = format!("0x{:08x}", get_selector("increment", &[]));
+
+    // Counter contract Lamina code with automatic function dispatch
     let lamina_code = r#"
     (begin
       ;; Define a storage slot for our counter
@@ -20,15 +30,7 @@ fn test_compile_counter_contract() {
           (define current (storage-load counter-slot))
           (storage-store counter-slot (+ current 1))
           (storage-load counter-slot)))
-          
-      ;; Handle function dispatch
-      (define (main selector)
-        (if (= selector 0x8ada066e) ;; "getCounter()"
-            (get-counter)
-            (if (= selector 0xd09de08a) ;; "increment()"
-                (increment)
-                (revert "Unknown function")))))
-    "#;
+    )"#;
 
     // Parse and evaluate the code
     let tokens = lexer::lex(lamina_code).unwrap();
@@ -41,13 +43,30 @@ fn test_compile_counter_contract() {
     assert!(huff_code.contains("Counter"));
     assert!(huff_code.contains("get_counter"));
     assert!(huff_code.contains("increment"));
-    assert!(huff_code.contains("SLOAD"));
-    assert!(huff_code.contains("SSTORE"));
+    assert!(huff_code.contains("sload"));
+    assert!(huff_code.contains("sstore"));
+
+    // Verify automatic selector generation
+    assert!(huff_code.contains("#define function getCounter() view returns (uint256)"));
+    assert!(huff_code.contains("#define function increment() view returns (uint256)"));
+
+    // Verify dispatcher logic is present
+    assert!(huff_code.contains("Function Dispatcher (Auto-Generated)"));
+    assert!(huff_code.contains("0x00 calldataload"));
+    assert!(huff_code.contains("0xe0 shr"));
+
+    // Use the calculated selectors
+    assert!(huff_code.contains(&get_counter_selector)); // getCounter()
+    assert!(huff_code.contains(&increment_selector)); // increment()
 }
 
 #[test]
 fn test_compile_simple_storage() {
-    // Simple storage contract Lamina code
+    // Calculate expected selectors
+    let get_value_selector = format!("0x{:08x}", get_selector("get-value", &[]));
+    let set_value_selector = format!("0x{:08x}", get_selector("set-value", &["new-value"]));
+
+    // Simple storage contract Lamina code with automatic function dispatch
     let lamina_code = r#"
     (begin
       ;; Define storage slot
@@ -62,15 +81,7 @@ fn test_compile_simple_storage() {
         (begin
           (storage-store value-slot new-value)
           (storage-load value-slot)))
-          
-      ;; Handle function dispatch
-      (define (main selector)
-        (if (= selector 0x6d4ce63c) ;; "getValue()"
-            (get-value)
-            (if (= selector 0x60fe47b1) ;; "setValue(uint256)"
-                (set-value (get-calldata-word 1))
-                (revert "Unknown function")))))
-    "#;
+    )"#;
 
     // Parse and evaluate the code
     let tokens = lexer::lex(lamina_code).unwrap();
@@ -83,7 +94,18 @@ fn test_compile_simple_storage() {
     assert!(huff_code.contains("SimpleStorage"));
     assert!(huff_code.contains("get_value"));
     assert!(huff_code.contains("set_value"));
-    assert!(huff_code.contains("CALLDATALOAD"));
-    assert!(huff_code.contains("SLOAD"));
-    assert!(huff_code.contains("SSTORE"));
+    assert!(huff_code.contains("calldataload"));
+    assert!(huff_code.contains("sload"));
+    assert!(huff_code.contains("sstore"));
+
+    // Verify automatic selector generation
+    assert!(huff_code.contains("#define function getValue() view returns (uint256)"));
+    assert!(huff_code.contains("#define function setValue(uint256) view returns (uint256)"));
+
+    // Verify dispatcher logic is present
+    assert!(huff_code.contains("Function Dispatcher (Auto-Generated)"));
+
+    // Use the calculated selectors instead of hardcoded values
+    assert!(huff_code.contains(&get_value_selector)); // getValue()
+    assert!(huff_code.contains(&set_value_selector)); // setValue(uint256)
 }

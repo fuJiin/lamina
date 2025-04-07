@@ -1,9 +1,9 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::error::Error;
 use crate::value::Value;
 
-use super::bytecode::{HuffContract, HuffMacro, Instruction};
+use super::bytecode::{FunctionSignature, HuffContract, HuffMacro, Instruction};
 use super::opcodes::Opcode;
 
 /// Compiler context to track state during compilation
@@ -17,14 +17,18 @@ struct CompilerContext {
     /// Track storage slots
     storage_slots: HashMap<String, u64>,
 
-    /// Track unique label counter
+    /// Track label counter
     label_counter: usize,
+
+    /// Track function signatures
+    function_signatures: Vec<FunctionSignature>,
 }
 
 /// Information about a function
 struct FunctionInfo {
     name: String,
     params: Vec<String>,
+    return_count: usize,
 }
 
 impl CompilerContext {
@@ -34,6 +38,7 @@ impl CompilerContext {
             functions: HashMap::new(),
             storage_slots: HashMap::new(),
             label_counter: 0,
+            function_signatures: Vec::new(),
         }
     }
 
@@ -50,14 +55,23 @@ impl CompilerContext {
     }
 
     /// Register a function definition
-    fn register_function(&mut self, name: &str, params: Vec<String>) {
+    fn register_function(&mut self, name: &str, params: Vec<String>, return_count: usize) {
         self.functions.insert(
             name.to_string(),
             FunctionInfo {
                 name: name.to_string(),
-                params,
+                params: params.clone(),
+                return_count,
             },
         );
+
+        // Register function signature if it's not the main function
+        if name.to_lowercase() != "main" {
+            // Assuming all returns are uint256 for now
+            let returns = vec!["uint256".to_string(); return_count];
+            self.function_signatures
+                .push(FunctionSignature::new(name, params, returns));
+        }
     }
 
     /// Register a storage slot
@@ -112,6 +126,24 @@ impl CompilerContext {
             }
         })
     }
+
+    /// Get the function info by name
+    fn get_function_info(&self, name: &str) -> Option<&FunctionInfo> {
+        self.functions.get(name)
+    }
+
+    /// Get a function's selector by name
+    fn get_function_selector(&self, name: &str) -> Option<u32> {
+        self.function_signatures
+            .iter()
+            .find(|sig| sig.name == name)
+            .map(|sig| sig.selector)
+    }
+
+    /// Get all function signatures
+    fn get_function_signatures(&self) -> &[FunctionSignature] {
+        &self.function_signatures
+    }
 }
 
 /// Compile a Lamina expression to Huff code
@@ -124,8 +156,8 @@ pub fn compile(expr: &Value, contract_name: &str) -> Result<String, Error> {
     // Second pass: compile functions to macros
     compile_functions(expr, &mut context)?;
 
-    // Create the main dispatcher macro
-    let main_macro = create_dispatcher_macro(&context)?;
+    // Create a main dispatcher macro that uses the auto-generated function selectors
+    let main_macro = create_auto_dispatcher_macro(&context)?;
 
     // Generate storage constants
     let storage_constants = context.generate_storage_constants();
@@ -137,46 +169,95 @@ pub fn compile(expr: &Value, contract_name: &str) -> Result<String, Error> {
         main: main_macro,
         macros: context.macros,
         storage_constants,
+        functions: context.function_signatures.clone(),
     };
 
     // Convert the contract to Huff code
     Ok(contract.to_string())
 }
 
-/// Analyze the program to discover functions and storage slots
-fn analyze_program(expr: &Value, context: &mut CompilerContext) -> Result<(), Error> {
-    // Extract the top-level begin form
-    if let Value::Pair(pair) = expr {
-        if let Value::Symbol(sym) = &pair.0 {
-            if sym == "begin" {
-                // Process the body of the begin form
-                let mut body = &pair.1;
+/// Create an automatic dispatcher macro based on function signatures
+fn create_auto_dispatcher_macro(context: &CompilerContext) -> Result<HuffMacro, Error> {
+    let mut instructions = Vec::new();
 
-                // Process each expression in the body
-                while let Value::Pair(pair) = body {
-                    let expr = &pair.0;
+    instructions.push(Instruction::Comment(
+        "Function Dispatcher (Auto-Generated)".to_string(),
+    ));
+    instructions.push(Instruction::Comment(
+        "Compare function selector and route to appropriate function".to_string(),
+    ));
 
-                    // Look for define forms
-                    if let Value::Pair(def_pair) = expr {
-                        if let Value::Symbol(def_sym) = &def_pair.0 {
-                            if def_sym == "define" {
-                                process_define(&def_pair.1, context)?;
-                            }
-                        }
-                    }
+    // Get function signatures
+    let function_signatures = context.get_function_signatures();
 
-                    // Move to the next expression
-                    body = &pair.1;
-                }
+    // For each function, create a selector comparison and jump
+    for (i, function) in function_signatures.iter().enumerate() {
+        let function_name = normalize_function_name(&function.name);
+        let selector = function.selector;
 
-                return Ok(());
-            }
-        }
+        // Convert the selector to bytes
+        let selector_bytes = selector_to_bytes(selector);
+
+        // Add a label for this comparison branch
+        let comparison_label = format!("compare_selector_{}", i);
+        instructions.push(Instruction::Label(comparison_label.clone()));
+
+        // Push the function selector constant
+        instructions.push(Instruction::Push(4, selector_bytes));
+
+        // Duplicate the calldata selector for comparison
+        instructions.push(Instruction::Simple(Opcode::DUP2));
+
+        // Compare the selectors
+        instructions.push(Instruction::Simple(Opcode::EQ));
+
+        // Jump to function if selectors match
+        let jump_label = format!("jump_to_{}", function_name);
+        instructions.push(Instruction::JumpLabel(jump_label.clone()));
+        instructions.push(Instruction::JumpToIf(jump_label.clone()));
+
+        // Add function jump destination
+        instructions.push(Instruction::Label(jump_label));
+
+        // Pop the selector before calling the function
+        instructions.push(Instruction::Simple(Opcode::POP));
+
+        // Call the function
+        instructions.push(Instruction::MacroCall(function_name));
+
+        // Store result in memory for return
+        instructions.push(Instruction::Comment(
+            "Store return value in memory".to_string(),
+        ));
+        instructions.push(Instruction::Push(1, vec![0]));
+        instructions.push(Instruction::Simple(Opcode::MSTORE));
+
+        // Return 32 bytes from memory
+        instructions.push(Instruction::Comment(
+            "Return 32 bytes from memory".to_string(),
+        ));
+        instructions.push(Instruction::Push(1, vec![32]));
+        instructions.push(Instruction::Push(1, vec![0]));
+        instructions.push(Instruction::Simple(Opcode::RETURN));
     }
 
-    Err(Error::Runtime(
-        "Expected a begin form at the top level".to_string(),
-    ))
+    // Add fallback for unknown selectors
+    instructions.push(Instruction::Label("unknown_selector".to_string()));
+    instructions.push(Instruction::Comment(
+        "Unknown function selector, revert".to_string(),
+    ));
+    instructions.push(Instruction::Push(1, vec![0]));
+    instructions.push(Instruction::Push(1, vec![0]));
+    instructions.push(Instruction::Simple(Opcode::REVERT));
+
+    // Create the main macro
+    Ok(HuffMacro {
+        name: "main".to_string(),
+        takes: 1,
+        returns: 0,
+        instructions,
+        params: vec!["selector".to_string()],
+    })
 }
 
 /// Process a define form during analysis
@@ -220,8 +301,12 @@ fn process_define(define_expr: &Value, context: &mut CompilerContext) -> Result<
                         param_list = &param_pair.1;
                     }
 
-                    // Register the function
-                    context.register_function(func_name, params);
+                    // Analyze the body to determine return count
+                    // For now, assume all functions return 1 value (typical for getters/setters)
+                    let return_count = 1;
+
+                    // Register the function with its parameters and return count
+                    context.register_function(func_name, params, return_count);
                 }
                 Ok(())
             }
@@ -232,6 +317,42 @@ fn process_define(define_expr: &Value, context: &mut CompilerContext) -> Result<
     } else {
         Err(Error::Runtime("Invalid define form".to_string()))
     }
+}
+
+/// Analyze the program to discover functions and storage slots
+fn analyze_program(expr: &Value, context: &mut CompilerContext) -> Result<(), Error> {
+    // Extract the top-level begin form
+    if let Value::Pair(pair) = expr {
+        if let Value::Symbol(sym) = &pair.0 {
+            if sym == "begin" {
+                // Process the body of the begin form
+                let mut body = &pair.1;
+
+                // Process each expression in the body
+                while let Value::Pair(pair) = body {
+                    let expr = &pair.0;
+
+                    // Look for define forms
+                    if let Value::Pair(def_pair) = expr {
+                        if let Value::Symbol(def_sym) = &def_pair.0 {
+                            if def_sym == "define" {
+                                process_define(&def_pair.1, context)?;
+                            }
+                        }
+                    }
+
+                    // Move to the next expression
+                    body = &pair.1;
+                }
+
+                return Ok(());
+            }
+        }
+    }
+
+    Err(Error::Runtime(
+        "Expected a begin form at the top level".to_string(),
+    ))
 }
 
 /// Compile functions to Huff macros
@@ -309,7 +430,7 @@ fn compile_function(
     // Set the current function name for the analyze_function_body function
     set_current_function_name(func_name);
 
-    let mut instructions: Vec<Instruction> = Vec::new();
+    let instructions: Vec<Instruction> = Vec::new();
 
     // Analyze the function body to determine its type
     let func_type = analyze_function_body(body, context)?;
@@ -355,6 +476,7 @@ fn compile_function(
                 takes: 0,
                 returns: 1,
                 instructions,
+                params: Vec::new(),
             };
 
             context.add_macro(macro_def);
@@ -405,6 +527,7 @@ fn compile_function(
                 takes: 1,   // Takes one parameter (the value)
                 returns: 1, // Returns the stored value
                 instructions,
+                params: vec!["value".to_string()],
             };
 
             context.add_macro(macro_def);
@@ -453,6 +576,7 @@ fn compile_function(
                 takes: 0,
                 returns: 1, // Returns the new value
                 instructions,
+                params: Vec::new(),
             };
 
             context.add_macro(macro_def);
@@ -478,6 +602,7 @@ fn compile_function(
                 takes: 0,
                 returns: 0,
                 instructions,
+                params: Vec::new(),
             };
 
             context.add_macro(macro_def);
@@ -576,31 +701,28 @@ fn extract_storage_from_function_call(
     body: &Value,
     context: &CompilerContext,
 ) -> Result<Option<u64>, Error> {
-    match body {
-        Value::Pair(pair) => {
-            if let Value::Symbol(op) = &pair.0 {
-                if op == "begin" {
-                    let mut body_iter = &pair.1;
+    if let Value::Pair(pair) = body {
+        if let Value::Symbol(op) = &pair.0 {
+            if op == "begin" {
+                let mut body_iter = &pair.1;
 
-                    // Look for function calls within the begin block
-                    while let Value::Pair(inner_pair) = body_iter {
-                        if let Value::Pair(inner_op_pair) = &inner_pair.0 {
-                            if let Value::Symbol(func_name) = &inner_op_pair.0 {
-                                // This is a simplification, but we can assume that get-counter uses the counter-slot
-                                if func_name == "get-counter" {
-                                    if let Some(slot) = context.get_storage_slot("counter-slot") {
-                                        return Ok(Some(slot));
-                                    }
+                // Look for function calls within the begin block
+                while let Value::Pair(inner_pair) = body_iter {
+                    if let Value::Pair(inner_op_pair) = &inner_pair.0 {
+                        if let Value::Symbol(func_name) = &inner_op_pair.0 {
+                            // This is a simplification, but we can assume that get-counter uses the counter-slot
+                            if func_name == "get-counter" {
+                                if let Some(slot) = context.get_storage_slot("counter-slot") {
+                                    return Ok(Some(slot));
                                 }
                             }
                         }
-
-                        body_iter = &inner_pair.1;
                     }
+
+                    body_iter = &inner_pair.1;
                 }
             }
         }
-        _ => {}
     }
 
     Ok(None)
@@ -611,7 +733,7 @@ fn analyze_function_body(body: &Value, context: &CompilerContext) -> Result<Func
     // First look at function name patterns as a hint
 
     // Check for known storage slots
-    for (_slot_name, slot_value) in &context.storage_slots {
+    for slot_value in context.storage_slots.values() {
         // For our specific example, we know these functions
         let calling_func_name = get_current_function_name();
         if let Some(name) = calling_func_name {
@@ -644,248 +766,99 @@ fn analyze_function_body(body: &Value, context: &CompilerContext) -> Result<Func
 
 /// Check if a function body is mainly doing a storage load
 fn is_storage_getter(body: &Value) -> bool {
-    match body {
-        Value::Pair(pair) => {
-            if let Value::Symbol(op) = &pair.0 {
-                if op == "storage-load" {
-                    return true;
-                } else if op == "begin" {
-                    // Check for storage-load as the last operation in the begin block
-                    let mut body_iter = &pair.1;
-                    let mut last_op_is_load = false;
+    if let Value::Pair(pair) = body {
+        if let Value::Symbol(op) = &pair.0 {
+            if op == "storage-load" {
+                return true;
+            } else if op == "begin" {
+                // Check for storage-load as the last operation in the begin block
+                let mut body_iter = &pair.1;
+                let mut last_op_is_load = false;
 
-                    while let Value::Pair(inner_pair) = body_iter {
-                        if let Value::Pair(inner_op_pair) = &inner_pair.0 {
-                            if let Value::Symbol(inner_op) = &inner_op_pair.0 {
-                                if inner_op == "storage-load" {
-                                    last_op_is_load = true;
-                                } else {
-                                    last_op_is_load = false;
-                                }
-                            }
+                while let Value::Pair(inner_pair) = body_iter {
+                    if let Value::Pair(inner_op_pair) = &inner_pair.0 {
+                        if let Value::Symbol(inner_op) = &inner_op_pair.0 {
+                            last_op_is_load = inner_op == "storage-load";
                         }
-
-                        // Check if next is Nil (end of list)
-                        if let Value::Nil = &inner_pair.1 {
-                            return last_op_is_load;
-                        }
-
-                        // Move to next item
-                        body_iter = &inner_pair.1;
                     }
+
+                    // Check if next is Nil (end of list)
+                    if let Value::Nil = &inner_pair.1 {
+                        return last_op_is_load;
+                    }
+
+                    // Move to next item
+                    body_iter = &inner_pair.1;
                 }
             }
         }
-        _ => {}
     }
     false
 }
 
 /// Check if a function body is incrementing a storage value
 fn is_storage_incrementer(body: &Value) -> bool {
-    match body {
-        Value::Pair(pair) => {
-            if let Value::Symbol(op) = &pair.0 {
-                if op == "begin" {
-                    // Look for patterns that indicate increment operation
-                    // For example, loading a value, adding to it, and storing it back
-                    let mut body_iter = &pair.1;
-                    let mut has_addition = false;
-                    let mut has_store = false;
+    if let Value::Pair(pair) = body {
+        if let Value::Symbol(op) = &pair.0 {
+            if op == "begin" {
+                // Look for patterns that indicate increment operation
+                // For example, loading a value, adding to it, and storing it back
+                let mut body_iter = &pair.1;
+                let mut has_addition = false;
+                let mut has_store = false;
 
-                    while let Value::Pair(inner_pair) = body_iter {
-                        if let Value::Pair(inner_op_pair) = &inner_pair.0 {
-                            if let Value::Symbol(inner_op) = &inner_op_pair.0 {
-                                if inner_op == "+" {
-                                    has_addition = true;
-                                } else if inner_op == "storage-store" {
-                                    has_store = true;
-                                }
+                while let Value::Pair(inner_pair) = body_iter {
+                    if let Value::Pair(inner_op_pair) = &inner_pair.0 {
+                        if let Value::Symbol(inner_op) = &inner_op_pair.0 {
+                            if inner_op == "+" {
+                                has_addition = true;
+                            } else if inner_op == "storage-store" {
+                                has_store = true;
                             }
                         }
-
-                        body_iter = &inner_pair.1;
                     }
 
-                    return has_addition && has_store;
+                    body_iter = &inner_pair.1;
                 }
+
+                return has_addition && has_store;
             }
         }
-        _ => {}
     }
     false
 }
 
 /// Check if a function body is setting a storage value
 fn is_storage_setter(body: &Value) -> bool {
-    match body {
-        Value::Pair(pair) => {
-            if let Value::Symbol(op) = &pair.0 {
-                if op == "storage-store" {
-                    return true;
-                } else if op == "begin" {
-                    // Look for storage-store operations within begin block
-                    let mut body_iter = &pair.1;
+    if let Value::Pair(pair) = body {
+        if let Value::Symbol(op) = &pair.0 {
+            if op == "storage-store" {
+                return true;
+            } else if op == "begin" {
+                // Look for storage-store operations within begin block
+                let mut body_iter = &pair.1;
 
-                    while let Value::Pair(inner_pair) = body_iter {
-                        if let Value::Pair(inner_op_pair) = &inner_pair.0 {
-                            if let Value::Symbol(inner_op) = &inner_op_pair.0 {
-                                if inner_op == "storage-store" {
-                                    return true;
-                                }
+                while let Value::Pair(inner_pair) = body_iter {
+                    if let Value::Pair(inner_op_pair) = &inner_pair.0 {
+                        if let Value::Symbol(inner_op) = &inner_op_pair.0 {
+                            if inner_op == "storage-store" {
+                                return true;
                             }
                         }
-
-                        body_iter = &inner_pair.1;
                     }
+
+                    body_iter = &inner_pair.1;
                 }
             }
         }
-        _ => {}
     }
     false
-}
-
-/// Create the main dispatcher macro
-fn create_dispatcher_macro(context: &CompilerContext) -> Result<HuffMacro, Error> {
-    // Extract the selectors from the main function
-    let selectors = extract_selectors_from_main(context)?;
-
-    let mut instructions = Vec::new();
-
-    instructions.push(Instruction::Comment("Function Dispatcher".to_string()));
-    instructions.push(Instruction::Comment(
-        "Compare function selector and route to appropriate function".to_string(),
-    ));
-
-    // For each selector, create a conditional branch
-    for (i, (selector, func_name)) in selectors.iter().enumerate() {
-        // Convert selector to bytes
-        let selector_bytes = selector_to_bytes(*selector);
-
-        // Normalize the function name to ensure consistent format
-        let normalized_func_name = normalize_function_name(func_name);
-
-        // Add a jump label for each selector comparison
-        let comparison_label = format!("compare_selector_{}", i);
-        instructions.push(Instruction::Label(comparison_label.clone()));
-
-        // Push selector to compare with
-        instructions.push(Instruction::Push(4, selector_bytes));
-
-        // Duplicate the calldata selector so we can keep comparing
-        instructions.push(Instruction::Simple(Opcode::DUP2));
-
-        // Compare the selectors
-        instructions.push(Instruction::Simple(Opcode::EQ));
-
-        // If selectors match, jump to the function
-        let function_jump_label = format!("jump_to_{}", normalized_func_name);
-        instructions.push(Instruction::JumpLabel(function_jump_label.clone()));
-        instructions.push(Instruction::JumpToIf(function_jump_label.clone()));
-
-        // Add the function jump label
-        instructions.push(Instruction::Label(function_jump_label));
-
-        // POP the selector from the stack before calling the function
-        instructions.push(Instruction::Simple(Opcode::POP));
-
-        // Call the function macro - using the normalized name
-        instructions.push(Instruction::MacroCall(normalized_func_name));
-
-        // Memory setup for return data - assuming all functions return a uint256
-        instructions.push(Instruction::Comment(
-            "Store return value in memory".to_string(),
-        ));
-        instructions.push(Instruction::Push(1, vec![0]));
-        instructions.push(Instruction::Simple(Opcode::MSTORE));
-
-        // Return 32 bytes from memory position 0
-        instructions.push(Instruction::Comment(
-            "Return 32 bytes from memory".to_string(),
-        ));
-        instructions.push(Instruction::Push(1, vec![32]));
-        instructions.push(Instruction::Push(1, vec![0]));
-        instructions.push(Instruction::Simple(Opcode::RETURN));
-    }
-
-    // If no selector matches, revert with an error
-    instructions.push(Instruction::Label("no_match".to_string()));
-    instructions.push(Instruction::Comment(
-        "No matching function, revert".to_string(),
-    ));
-
-    // For an error message, we'd need to create it in memory
-    // For simplicity, just revert with no data for now
-    instructions.push(Instruction::Push(1, vec![0]));
-    instructions.push(Instruction::Push(1, vec![0]));
-    instructions.push(Instruction::Simple(Opcode::REVERT));
-
-    // Create the macro
-    Ok(HuffMacro {
-        name: "main".to_string(),
-        takes: 1,   // Takes a selector
-        returns: 0, // Doesn't return (calls other functions that do)
-        instructions,
-    })
-}
-
-/// Extract function selectors from the main function
-fn extract_selectors_from_main(context: &CompilerContext) -> Result<Vec<(u32, String)>, Error> {
-    // For our example code, we need to handle these specific selectors
-    // In a real implementation, we would actually parse the main function to extract these
-
-    let mut selectors = Vec::new();
-
-    // Check for our example functions
-    if context.functions.contains_key("get-counter") {
-        selectors.push((0x8ada066e, "get-counter".to_string())); // This is the actual selector in the example
-    }
-
-    if context.functions.contains_key("increment") {
-        selectors.push((0xd09de08a, "increment".to_string())); // This is the actual selector in the example
-    }
-
-    // If no functions were found, use the method that generates selectors for all registered functions
-    if selectors.is_empty() {
-        for func_name in context.functions.keys() {
-            // Skip the main function as it's the dispatcher
-            if func_name != "main" {
-                let selector = simple_function_selector(func_name);
-                selectors.push((selector, func_name.clone()));
-            }
-        }
-    }
-
-    Ok(selectors)
-}
-
-/// Generate a simple function selector based on the function name
-/// This is a simplified version; a real implementation would use keccak256
-fn simple_function_selector(func_name: &str) -> u32 {
-    // For now, we'll use a simple hash function
-    // In a real implementation, this would be keccak256(func_signature)[0..4]
-    let mut hash: u32 = 0;
-    for byte in func_name.bytes() {
-        hash = hash.wrapping_mul(31).wrapping_add(byte as u32);
-    }
-    hash
-}
-
-/// Convert a u32 selector to 4 bytes
-fn selector_to_bytes(selector: u32) -> Vec<u8> {
-    vec![
-        ((selector >> 24) & 0xFF) as u8,
-        ((selector >> 16) & 0xFF) as u8,
-        ((selector >> 8) & 0xFF) as u8,
-        (selector & 0xFF) as u8,
-    ]
 }
 
 /// Get the current function name being compiled
 /// This is a thread_local variable that will be set during compile_function
 thread_local! {
-    static CURRENT_FUNCTION: std::cell::RefCell<Option<String>> = std::cell::RefCell::new(None);
+    static CURRENT_FUNCTION: std::cell::RefCell<Option<String>> = const { std::cell::RefCell::new(None) };
 }
 
 /// Set the current function name
@@ -903,4 +876,10 @@ fn get_current_function_name() -> Option<String> {
 /// Helper function to normalize function names
 fn normalize_function_name(name: &str) -> String {
     name.replace('-', "_")
+}
+
+/// Convert a selector value to bytes
+fn selector_to_bytes(selector: u32) -> Vec<u8> {
+    let bytes = selector.to_be_bytes();
+    bytes.to_vec()
 }

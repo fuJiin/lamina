@@ -1,4 +1,5 @@
 use std::fmt;
+use tiny_keccak::{Hasher, Keccak};
 
 use super::opcodes::Opcode;
 
@@ -37,6 +38,7 @@ pub struct HuffMacro {
     pub takes: usize,   // Number of stack inputs
     pub returns: usize, // Number of stack outputs
     pub instructions: Vec<Instruction>,
+    pub params: Vec<String>, // Parameter names for the function
 }
 
 impl fmt::Display for HuffMacro {
@@ -94,6 +96,71 @@ impl fmt::Display for HuffMacro {
     }
 }
 
+/// Represents a function signature
+#[derive(Debug, Clone)]
+pub struct FunctionSignature {
+    pub name: String,
+    pub params: Vec<String>,
+    pub returns: Vec<String>,
+    pub selector: u32,
+}
+
+impl FunctionSignature {
+    pub fn new(name: &str, params: Vec<String>, returns: Vec<String>) -> Self {
+        // Convert param strings to string slices for function selector calculation
+        let param_slices: Vec<&str> = params.iter().map(|s| s.as_str()).collect();
+
+        let selector = calculate_function_selector(name, &param_slices);
+
+        FunctionSignature {
+            name: name.to_string(),
+            params,
+            returns,
+            selector,
+        }
+    }
+
+    pub fn format_as_huff(&self) -> String {
+        let function_name = macro_to_function_name(&self.name);
+
+        // Format parameters - for now assume all are uint256
+        let param_types = if self.params.is_empty() {
+            "".to_string()
+        } else {
+            "uint256"
+                .repeat(self.params.len())
+                .chars()
+                .collect::<Vec<_>>()
+                .chunks(7) // Length of "uint256"
+                .map(|c| c.iter().collect::<String>())
+                .collect::<Vec<_>>()
+                .join(",")
+        };
+
+        // Format return types - for now assume all are uint256
+        let return_types = if self.returns.is_empty() {
+            "".to_string()
+        } else {
+            format!(
+                "returns ({})",
+                "uint256"
+                    .repeat(self.returns.len())
+                    .chars()
+                    .collect::<Vec<_>>()
+                    .chunks(7) // Length of "uint256"
+                    .map(|c| c.iter().collect::<String>())
+                    .collect::<Vec<_>>()
+                    .join(",")
+            )
+        };
+
+        format!(
+            "#define function {}({}) view {}",
+            function_name, param_types, return_types
+        )
+    }
+}
+
 /// Represents a Huff contract with its macros
 #[derive(Debug, Clone)]
 pub struct HuffContract {
@@ -101,7 +168,8 @@ pub struct HuffContract {
     pub constructor: Option<HuffMacro>,
     pub main: HuffMacro,
     pub macros: Vec<HuffMacro>,
-    pub storage_constants: String, // New field for storage constants
+    pub storage_constants: String,         // For storage constants
+    pub functions: Vec<FunctionSignature>, // Function signatures with selectors
 }
 
 impl fmt::Display for HuffContract {
@@ -122,20 +190,17 @@ impl fmt::Display for HuffContract {
         // Use a HashSet to track function signatures we've already written
         let mut seen_functions = std::collections::HashSet::new();
 
-        for mac in &self.macros {
-            // Convert macro names to function definitions
-            // Format: macro_name -> functionName
-            let func_name = macro_to_function_name(&mac.name);
+        for function in &self.functions {
+            let func_name = &function.name;
 
             // Skip duplicates and skip the main function
-            if seen_functions.contains(&func_name) || mac.name.to_lowercase() == "main" {
+            if seen_functions.contains(func_name) || func_name.to_lowercase() == "main" {
                 continue;
             }
             seen_functions.insert(func_name.clone());
 
-            // Simple return type detection - all functions return uint256 for now
-            // In a real implementation, this would be determined by analyzing the function
-            writeln!(f, "#define function {}() view returns (uint256)", func_name)?;
+            // Write function signature with proper selector
+            writeln!(f, "{}", function.format_as_huff())?;
         }
 
         // Write all the macros with proper Huff syntax
@@ -193,7 +258,7 @@ impl fmt::Display for HuffContract {
 /// Convert a macro name to a function name in camelCase
 fn macro_to_function_name(macro_name: &str) -> String {
     // Convert snake_case or kebab-case to camelCase
-    let parts: Vec<&str> = macro_name.split(|c| c == '_' || c == '-').collect();
+    let parts: Vec<&str> = macro_name.split(['_', '-']).collect();
     if parts.is_empty() {
         return String::new();
     }
@@ -207,4 +272,38 @@ fn macro_to_function_name(macro_name: &str) -> String {
     }
 
     result
+}
+
+/// Calculate a function selector from a function name
+/// This uses the standard Ethereum ABI function selector calculation:
+/// first 4 bytes of keccak256(function_signature)
+pub fn calculate_function_selector(name: &str, params: &[&str]) -> u32 {
+    // Convert from snake_case or kebab-case to camelCase for solidity-style function names
+    let function_name = macro_to_function_name(name);
+
+    // Construct the function signature string: name(type1,type2,...)
+    let mut signature = function_name;
+    signature.push('(');
+
+    // For now, assume all params are uint256
+    // In a real implementation, we would analyze the parameter types
+    if !params.is_empty() {
+        for _ in 0..params.len() - 1 {
+            signature.push_str("uint256,");
+        }
+        signature.push_str("uint256");
+    }
+
+    signature.push(')');
+
+    // Calculate keccak256 hash of the signature
+    let mut keccak = Keccak::v256();
+    let mut hash = [0u8; 32];
+    keccak.update(signature.as_bytes());
+    keccak.finalize(&mut hash);
+
+    // Take first 4 bytes and convert to u32
+    let selector = u32::from_be_bytes([hash[0], hash[1], hash[2], hash[3]]);
+
+    selector
 }

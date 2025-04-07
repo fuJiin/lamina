@@ -1,7 +1,7 @@
 pub mod bytecode;
-pub mod compiler;
-pub mod opcodes;
-pub mod types;
+mod compiler;
+mod opcodes;
+mod types;
 
 use crate::error::Error;
 use crate::value::Value;
@@ -36,3 +36,6 @@ pub fn compile_to_file(expr: &Value, contract_name: &str, output_path: &str) -> 
     std::fs::write(output_path, huff_code).map_err(|e| Error::IO(e.to_string()))?;
     Ok(())
 }
+
+// Re-export the function selector calculation
+pub use bytecode::calculate_function_selector;

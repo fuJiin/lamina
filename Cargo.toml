@@ -7,6 +7,7 @@ edition = "2021"
 logos = "0.13"     # For lexing
 thiserror = "1.0"  # For error handling
 rustyline = "12.0" # For REPL interface
+tiny-keccak = { version = "2.0", features = ["keccak"] } # For hashing function selectors
 
 [[example]]
 name = "rust_to_lamina"

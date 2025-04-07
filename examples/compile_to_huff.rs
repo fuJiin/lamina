@@ -9,7 +9,7 @@ use std::path::Path;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== Lamina to Huff Compiler Example ===");
 
-    // Simple Lamina code for a counter contract
+    // Simple Lamina code for a counter contract with automatic function dispatch
     let lamina_code = r#"
     (begin
       ;; Define a storage slot for our counter
@@ -25,15 +25,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
           (define current (storage-load counter-slot))
           (storage-store counter-slot (+ current 1))
           (storage-load counter-slot)))
-          
-      ;; Handle function dispatch
-      (define (main selector)
-        (if (= selector 0x8ada066e) ;; "getCounter()"
-            (get-counter)
-            (if (= selector 0xd09de08a) ;; "increment()"
-                (increment)
-                (revert "Unknown function")))))
-    "#;
+    )"#;
 
     println!("Parsing Lamina code...");
 
@@ -68,6 +60,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "Generated Huff code has been written to {}",
         output_path.display()
     );
+
+    println!("\nNotice: The compiler now automatically generates function selectors!");
+    println!("You no longer need to hardcode selectors in your Lamina code.");
 
     Ok(())
 }

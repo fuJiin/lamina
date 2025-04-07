@@ -34,7 +34,7 @@
 
 
 #define macro MAIN_MACRO() = takes(1) returns(0) {
-    // Function Dispatcher
+    // Function Dispatcher (Auto-Generated)
     // Compare function selector and route to appropriate function
 compare_selector_0:
     0x8ada066e 
@@ -70,8 +70,8 @@ jump_to_increment:
     0x20 
     0x00 
     return
-no_match:
-    // No matching function, revert
+unknown_selector:
+    // Unknown function selector, revert
     0x00 
     0x00 
     revert
